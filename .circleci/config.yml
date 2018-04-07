@@ -1,0 +1,30 @@
+version: 2
+jobs:
+  build:
+    docker:
+      - image: node:9
+    workdir: ~/reader
+    steps:
+      - checkout
+      - restore_cache:
+          key: v1
+      - run: |
+          npm install
+      - run: |
+          NODE_ENV=production npm run build
+      - save_cache:
+          key: v1
+          paths:
+            - "./node_modules"
+      - deploy:
+          command: |
+            if [ "${CIRCLE_BRANCH}" == "master" ]; then
+              cat >> ~/.ssh/config << EOF
+              VerifyHostKeyDNS yes
+              StrictHostKeyChecking no
+            EOF
+              git remote add dokku dokku@ss.blurrcat.net:reader
+              git config user.name "blurrcat"
+              git config user.email "blurrcat@gmail.com"
+              ./deploy.sh
+            fi
