@@ -1,43 +1,14 @@
-module Main exposing (..)
+module Main exposing (main)
 
-import Html exposing (Html)
-
-
-type alias Model =
-    {}
+import Html
+import Page.Home as Home
 
 
-type Msg
-    = Noop
-
-
-main : Program Never Model Msg
+main : Program Never Home.Model Home.Msg
 main =
     Html.program
-        { init = init
-        , view = view
-        , update = update
-        , subscriptions = subscriptions
+        { init = Home.init
+        , view = Home.view
+        , update = Home.update
+        , subscriptions = Home.subscriptions
         }
-
-
-init : ( Model, Cmd Msg )
-init =
-    {} ! []
-
-
-update : Msg -> Model -> ( Model, Cmd Msg )
-update msg model =
-    case msg of
-        Noop ->
-            model ! []
-
-
-subscriptions : Model -> Sub Msg
-subscriptions model =
-    Sub.none
-
-
-view : Model -> Html Msg
-view model =
-    Html.text "Hello, sailor!"
