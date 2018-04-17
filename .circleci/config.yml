@@ -7,15 +7,20 @@ jobs:
     steps:
       - checkout
       - restore_cache:
-          key: v1
+          keys:
+            - node-v1-{{ checksum "package.json" }}
+            - elm-v1-{{ checksum "elm-package.json" }}
       - run: |
           npm install
       - run: |
           NODE_ENV=production npm run build
       - save_cache:
-          key: v1
+          key: node-v1-{{ checksum "package.json" }}
           paths:
             - "./node_modules"
+      - save_cache:
+          key: elm-v1-{{ checksum "elm-package.json" }}
+          paths:
             - "./elm-stuff"
       - deploy:
           command: |
