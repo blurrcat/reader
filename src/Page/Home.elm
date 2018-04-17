@@ -1,7 +1,7 @@
 module Page.Home exposing (Model, Msg, init, update, view, subscriptions)
 
 import Html exposing (..)
-import Html.Attributes exposing (class, style)
+import Html.Attributes exposing (class, style, href)
 import Html.Events exposing (onClick)
 import RemoteData exposing (WebData)
 import Json.Decode as Decode
@@ -10,6 +10,7 @@ import Data.Feed.Item as FeedItem
 import Http
 import HttpBuilder
 import Api
+import Markdown
 
 
 type alias Feeds =
@@ -24,6 +25,7 @@ type alias Model =
     { feeds : WebData Feeds
     , feedItems : WebData FeedItems
     , selectedFeedId : Maybe Feed.FeedId
+    , selectedFeedItemId : Maybe FeedItem.FeedItemId
     }
 
 
@@ -50,6 +52,7 @@ init =
     { feeds = RemoteData.Loading
     , feedItems = RemoteData.NotAsked
     , selectedFeedId = Nothing
+    , selectedFeedItemId = Nothing
     }
         ! [ getFeeds 1 ]
 
@@ -59,6 +62,7 @@ type Msg
     | FeedsResponse (WebData Feeds)
     | FeedItemsResponse (WebData FeedItems)
     | SelectFeed Feed.FeedId
+    | SelectFeedItem FeedItem.FeedItemId
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -76,6 +80,21 @@ update msg model =
         SelectFeed feedId ->
             { model | selectedFeedId = Just feedId }
                 ! [ getFeedItems 1 feedId ]
+
+        SelectFeedItem feedItemId ->
+            let
+                newSelectedId =
+                    case model.selectedFeedItemId of
+                        Nothing ->
+                            Just feedItemId
+
+                        Just currentId ->
+                            if currentId == feedItemId then
+                                Nothing
+                            else
+                                Just feedItemId
+            in
+                { model | selectedFeedItemId = newSelectedId } ! []
 
 
 subscriptions : Model -> Sub Msg
@@ -101,6 +120,7 @@ feedView onClickMsg selectedFeedId feed =
             selectedStyle
                 :: [ ( "borderBottom", "1px solid #ddd" )
                    , ( "padding", "0.5em" )
+                   , ( "cursor", "pointer" )
                    ]
     in
         div
@@ -136,19 +156,59 @@ feedsView selectedFeedId feeds =
             [ content ]
 
 
-feedItemView item =
-    div
-        [ style
-            [ ( "borderBottom", "1px solid #ddd" )
-            , ( "padding", "0.5em" )
+feedItemView onClickMsg selectedId item =
+    let
+        isSelected =
+            case selectedId of
+                Nothing ->
+                    False
+
+                Just selected ->
+                    selected == item.id
+
+        titleWeight =
+            if isSelected then
+                "bold"
+            else
+                "normal"
+
+        titleView =
+            [ div
+                [ onClick onClickMsg
+                , style
+                    [ ( "font-weight", titleWeight )
+                    , ( "cursor", "pointer" )
+                    ]
+                ]
+                [ text item.title ]
             ]
-        ]
-        [ text item.title
-        ]
+
+        detailView =
+            if isSelected then
+                [ div
+                    [ style
+                        [ ( "padding", "1em" )
+                        , ( "font-size", "90%" )
+                        ]
+                    ]
+                    [ a [ href item.link ] [ text item.link ]
+                    , Markdown.toHtml [] item.description
+                    ]
+                ]
+            else
+                []
+    in
+        div
+            [ style
+                [ ( "borderBottom", "1px solid #ddd" )
+                , ( "padding", "0.5em" )
+                ]
+            ]
+            (titleView ++ detailView)
 
 
-feedItemsView : WebData FeedItems -> Html Msg
-feedItemsView items =
+feedItemsView : Maybe FeedItem.FeedItemId -> WebData FeedItems -> Html Msg
+feedItemsView selectedId items =
     let
         content =
             case items of
@@ -163,7 +223,7 @@ feedItemsView items =
 
                 RemoteData.Success resp ->
                     resp.results
-                        |> List.map feedItemView
+                        |> List.map (\item -> feedItemView (SelectFeedItem item.id) selectedId item)
                         |> div []
     in
         div
@@ -188,5 +248,5 @@ view model =
                 [ ( "height", "100%" )
                 ]
             ]
-            [ feedItemsView model.feedItems ]
+            [ feedItemsView model.selectedFeedItemId model.feedItems ]
         ]

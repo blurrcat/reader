@@ -31,8 +31,11 @@ listDecoder itemDecoder =
 
 url : String -> String
 url str =
-    -- "https://air-api.blurrcat.net" ++ str
-    "http://localhost:8000" ++ str
+    "https://air-api.blurrcat.net" ++ str
+
+
+
+-- "http://localhost:8000" ++ str
 
 
 get : List ( String, String ) -> Decoder a -> String -> Http.Request a
