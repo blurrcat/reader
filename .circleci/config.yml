@@ -3,7 +3,7 @@ jobs:
   build:
     docker:
       - image: node:9
-    workdir: ~/reader
+    working_directory: ~/reader
     steps:
       - checkout
       - restore_cache:
@@ -16,6 +16,7 @@ jobs:
           key: v1
           paths:
             - "./node_modules"
+            - "./elm-stuff"
       - deploy:
           command: |
             if [ "${CIRCLE_BRANCH}" == "master" ]; then
