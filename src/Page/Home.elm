@@ -6,6 +6,8 @@ import Html.Events exposing (onClick)
 import RemoteData exposing (WebData)
 import Json.Decode as Decode
 import Data.Feed as Feed
+import Data.Feed.Item as FeedItem
+import Http
 import HttpBuilder
 import Api
 
@@ -14,25 +16,39 @@ type alias Feeds =
     Api.ListResponse Feed.Feed
 
 
+type alias FeedItems =
+    Api.ListResponse FeedItem.FeedItem
+
+
 type alias Model =
     { feeds : WebData Feeds
+    , feedItems : WebData FeedItems
     , selectedFeedId : Maybe Feed.FeedId
     }
 
 
 getFeeds page =
-    (Api.list
-        [ ( "page", toString page ) ]
-        Feed.decoder
-        "/feeds/"
-    )
+    "/feeds/"
+        |> Api.list
+            [ ( "page", toString page ) ]
+            Feed.decoder
         |> RemoteData.sendRequest
         |> Cmd.map FeedsResponse
+
+
+getFeedItems page feedId =
+    ("/feeds/" ++ (Feed.idToString feedId) ++ "/items")
+        |> Api.list
+            [ ( "page", toString page ) ]
+            FeedItem.decoder
+        |> RemoteData.sendRequest
+        |> Cmd.map FeedItemsResponse
 
 
 init : ( Model, Cmd Msg )
 init =
     { feeds = RemoteData.Loading
+    , feedItems = RemoteData.NotAsked
     , selectedFeedId = Nothing
     }
         ! [ getFeeds 1 ]
@@ -41,6 +57,7 @@ init =
 type Msg
     = Noop
     | FeedsResponse (WebData Feeds)
+    | FeedItemsResponse (WebData FeedItems)
     | SelectFeed Feed.FeedId
 
 
@@ -53,8 +70,12 @@ update msg model =
         FeedsResponse resp ->
             { model | feeds = resp } ! []
 
+        FeedItemsResponse resp ->
+            { model | feedItems = resp } ! []
+
         SelectFeed feedId ->
-            { model | selectedFeedId = Just feedId } ! []
+            { model | selectedFeedId = Just feedId }
+                ! [ getFeedItems 1 feedId ]
 
 
 subscriptions : Model -> Sub Msg
@@ -115,6 +136,41 @@ feedsView selectedFeedId feeds =
             [ content ]
 
 
+feedItemView item =
+    div
+        [ style
+            [ ( "borderBottom", "1px solid #ddd" )
+            , ( "padding", "0.5em" )
+            ]
+        ]
+        [ text item.title
+        ]
+
+
+feedItemsView : WebData FeedItems -> Html Msg
+feedItemsView items =
+    let
+        content =
+            case items of
+                RemoteData.NotAsked ->
+                    text ""
+
+                RemoteData.Loading ->
+                    text "Loading.."
+
+                RemoteData.Failure err ->
+                    text ("Error: " ++ toString err)
+
+                RemoteData.Success resp ->
+                    resp.results
+                        |> List.map feedItemView
+                        |> div []
+    in
+        div
+            []
+            [ content ]
+
+
 view : Model -> Html Msg
 view model =
     div
@@ -132,5 +188,5 @@ view model =
                 [ ( "height", "100%" )
                 ]
             ]
-            [ text "main" ]
+            [ feedItemsView model.feedItems ]
         ]

@@ -9,7 +9,6 @@ import Data.Feed exposing (FeedId, feedIdDecoder)
 
 type alias FeedItem =
     { id : FeedItemId
-    , feed_id : FeedId
     , title : String
     , description : String
     , link : String
@@ -25,7 +24,6 @@ decoder : Decoder FeedItem
 decoder =
     decode FeedItem
         |> required "id" feedItemIdDecoder
-        |> required "feed_id" feedIdDecoder
         |> required "title" string
         |> optional "description" string ""
         |> required "link" string
