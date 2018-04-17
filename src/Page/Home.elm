@@ -11,6 +11,7 @@ import Http
 import HttpBuilder
 import Api
 import Markdown
+import Date.Format as DF
 
 
 type alias Feeds =
@@ -78,7 +79,10 @@ update msg model =
             { model | feedItems = resp } ! []
 
         SelectFeed feedId ->
-            { model | selectedFeedId = Just feedId }
+            { model
+                | selectedFeedId = Just feedId
+                , feedItems = RemoteData.Loading
+            }
                 ! [ getFeedItems 1 feedId ]
 
         SelectFeedItem feedItemId ->
@@ -174,13 +178,23 @@ feedItemView onClickMsg selectedId item =
 
         titleView =
             [ div
-                [ onClick onClickMsg
-                , style
-                    [ ( "font-weight", titleWeight )
-                    , ( "cursor", "pointer" )
+                [ onClick onClickMsg ]
+                [ span
+                    [ style
+                        [ ( "font-weight", titleWeight )
+                        , ( "cursor", "pointer" )
+                        ]
                     ]
+                    [ text item.title ]
+                , span
+                    [ style
+                        [ ( "font-size", "80%" )
+                        , ( "color", "#aaa" )
+                        , ( "margin-left", "0.5em" )
+                        ]
+                    ]
+                    [ text (DF.format "%Y-%m-%d %H:%M:%S" item.updated_at) ]
                 ]
-                [ text item.title ]
             ]
 
         detailView =
@@ -227,7 +241,7 @@ feedItemsView selectedId items =
                         |> div []
     in
         div
-            []
+            [ style [ ( "padding", "1em" ) ] ]
             [ content ]
 
 
