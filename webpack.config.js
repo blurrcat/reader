@@ -13,7 +13,7 @@ module.exports = {
 
   plugins: [
     new HtmlWebpackPlugin({
-      title: "Three Body",
+      title: "Feed Reader",
       meta: {
         viewport: 'width=device-width, initial-scale=1'
       },
