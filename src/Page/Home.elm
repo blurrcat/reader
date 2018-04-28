@@ -1,7 +1,7 @@
 module Page.Home exposing (Model, Msg, init, update, view, subscriptions)
 
 import Html exposing (..)
-import Html.Attributes exposing (class, style, href)
+import Html.Attributes exposing (class, classList, style, href, target, rel)
 import Html.Events exposing (onClick)
 import RemoteData exposing (WebData)
 import Json.Decode as Decode
@@ -11,7 +11,10 @@ import Http
 import HttpBuilder
 import Api
 import Markdown
+import Date
 import Date.Format as DF
+import FeatherIcons as FIcons
+import Icons
 
 
 type alias Feeds =
@@ -25,7 +28,7 @@ type alias FeedItems =
 type alias Model =
     { feeds : WebData Feeds
     , feedItems : WebData FeedItems
-    , selectedFeedId : Maybe Feed.FeedId
+    , selectedFeed : Maybe Feed.Feed
     , selectedFeedItemId : Maybe FeedItem.FeedItemId
     }
 
@@ -40,9 +43,15 @@ getFeeds page =
 
 
 getFeedItems page feedId =
-    ("/feeds/" ++ (Feed.idToString feedId) ++ "/items")
+    "/feed-items/"
         |> Api.list
-            [ ( "page", toString page ) ]
+            [ ( "page", toString page )
+            , ( "feed_id"
+              , feedId
+                    |> Maybe.map Feed.idToString
+                    |> Maybe.withDefault ""
+              )
+            ]
             FeedItem.decoder
         |> RemoteData.sendRequest
         |> Cmd.map FeedItemsResponse
@@ -51,11 +60,13 @@ getFeedItems page feedId =
 init : ( Model, Cmd Msg )
 init =
     { feeds = RemoteData.Loading
-    , feedItems = RemoteData.NotAsked
-    , selectedFeedId = Nothing
+    , feedItems = RemoteData.Loading
+    , selectedFeed = Nothing
     , selectedFeedItemId = Nothing
     }
-        ! [ getFeeds 1 ]
+        ! [ getFeeds 1
+          , getFeedItems 1 Nothing
+          ]
 
 
 type Msg
@@ -79,11 +90,22 @@ update msg model =
             { model | feedItems = resp } ! []
 
         SelectFeed feedId ->
-            { model
-                | selectedFeedId = Just feedId
-                , feedItems = RemoteData.Loading
-            }
-                ! [ getFeedItems 1 feedId ]
+            let
+                selectedFeed =
+                    model.feeds
+                        |> RemoteData.toMaybe
+                        |> Maybe.andThen
+                            (\resp ->
+                                resp.results
+                                    |> List.filter (\f -> f.id == feedId)
+                                    |> List.head
+                            )
+            in
+                { model
+                    | selectedFeed = selectedFeed
+                    , feedItems = RemoteData.Loading
+                }
+                    ! [ getFeedItems 1 (Just feedId) ]
 
         SelectFeedItem feedItemId ->
             let
@@ -142,7 +164,7 @@ feedsView selectedFeedId feeds =
                     text "Initializing.."
 
                 RemoteData.Loading ->
-                    text "Loading.."
+                    loadingView
 
                 RemoteData.Failure err ->
                     text ("Error: " ++ toString err)
@@ -160,6 +182,54 @@ feedsView selectedFeedId feeds =
             [ content ]
 
 
+loadingView : Html msg
+loadingView =
+    div
+        [ style
+            [ ( "width", "100%" )
+            , ( "text-align", "center" )
+            ]
+        , class "animated rotateIn"
+        ]
+        [ FIcons.loader
+            |> FIcons.toHtml []
+        ]
+
+
+linkIconView : FIcons.Icon -> Maybe String -> Html msg
+linkIconView icon url =
+    a
+        [ href (url |> Maybe.withDefault "#")
+        , target "_blank"
+        , rel "noopener noreferrer"
+        , style
+            [ ( "color", "black" )
+            , ( "padding-right", "0.5em" )
+            ]
+        , classList [ ( "hidden", url == Nothing ) ]
+        ]
+        [ icon
+            |> FIcons.withSize 1
+            |> FIcons.withSizeUnit "em"
+            |> FIcons.toHtml []
+        ]
+
+
+datetimeView : Date.Date -> Html msg
+datetimeView datetime =
+    span
+        [ style
+            [ ( "margin-right", "0.5em" )
+            , ( "font-size", "80%" )
+            , ( "vertical-align", "text-top" )
+            , ( "color", "#aaa" )
+            ]
+        ]
+        [ text (DF.format "%Y-%m-%d %H:%M:%S" datetime)
+        ]
+
+
+feedItemView : Msg -> Maybe FeedItem.FeedItemId -> FeedItem.FeedItem -> Html Msg
 feedItemView onClickMsg selectedId item =
     let
         isSelected =
@@ -186,14 +256,6 @@ feedItemView onClickMsg selectedId item =
                         ]
                     ]
                     [ text item.title ]
-                , span
-                    [ style
-                        [ ( "font-size", "80%" )
-                        , ( "color", "#aaa" )
-                        , ( "margin-left", "0.5em" )
-                        ]
-                    ]
-                    [ text (DF.format "%Y-%m-%d %H:%M:%S" item.updated_at) ]
                 ]
             ]
 
@@ -204,8 +266,12 @@ feedItemView onClickMsg selectedId item =
                         [ ( "padding", "1em" )
                         , ( "font-size", "90%" )
                         ]
+                    , class "animated fadeIn"
                     ]
-                    [ a [ href item.link ] [ text item.link ]
+                    [ div []
+                        [ datetimeView item.updated_at
+                        , linkIconView FIcons.externalLink (Just item.link)
+                        ]
                     , Markdown.toHtml [] item.description
                     ]
                 ]
@@ -215,22 +281,49 @@ feedItemView onClickMsg selectedId item =
         div
             [ style
                 [ ( "borderBottom", "1px solid #ddd" )
-                , ( "padding", "0.5em" )
+                , ( "padding", "0.5em 0" )
                 ]
             ]
             (titleView ++ detailView)
 
 
-feedItemsView : Maybe FeedItem.FeedItemId -> WebData FeedItems -> Html Msg
-feedItemsView selectedId items =
+feedItemsView : Maybe Feed.Feed -> Maybe FeedItem.FeedItemId -> WebData FeedItems -> Html Msg
+feedItemsView selectedFeed selectedId items =
     let
-        content =
+        titleContent =
+            case selectedFeed of
+                Nothing ->
+                    [ h3 [] [ text "Latest" ]
+                    ]
+
+                Just feed ->
+                    [ h3 [] [ text feed.title ]
+                    , div
+                        []
+                        [ div []
+                            [ datetimeView feed.updated_at
+                            , linkIconView Icons.rss (Just feed.feed_link)
+                            , linkIconView FIcons.externalLink feed.link
+                            ]
+                        ]
+                    , p [] [ text feed.description ]
+                    ]
+
+        titleDiv =
+            div
+                [ style
+                    [ ( "border-bottom", "1px solid #999" )
+                    ]
+                ]
+                titleContent
+
+        itemsList =
             case items of
                 RemoteData.NotAsked ->
                     text ""
 
                 RemoteData.Loading ->
-                    text "Loading.."
+                    loadingView
 
                 RemoteData.Failure err ->
                     text ("Error: " ++ toString err)
@@ -238,11 +331,13 @@ feedItemsView selectedId items =
                 RemoteData.Success resp ->
                     resp.results
                         |> List.map (\item -> feedItemView (SelectFeedItem item.id) selectedId item)
-                        |> div []
+                        |> div [ class "animated fadeIn" ]
     in
         div
-            [ style [ ( "padding", "1em" ) ] ]
-            [ content ]
+            [ style [ ( "padding", "0 0.5em" ) ] ]
+            [ titleDiv
+            , itemsList
+            ]
 
 
 view : Model -> Html Msg
@@ -255,12 +350,16 @@ view model =
                 [ ( "height", "100%" )
                 ]
             ]
-            [ feedsView model.selectedFeedId model.feeds ]
+            [ model.feeds
+                |> feedsView (model.selectedFeed |> Maybe.map .id)
+            ]
         , div
             [ class "pure-u-3-4"
             , style
                 [ ( "height", "100%" )
                 ]
             ]
-            [ feedItemsView model.selectedFeedItemId model.feedItems ]
+            [ model.feedItems
+                |> feedItemsView model.selectedFeed model.selectedFeedItemId
+            ]
         ]
