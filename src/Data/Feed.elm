@@ -11,6 +11,7 @@ type alias Feed =
     , title : String
     , description : String
     , link : Maybe String
+    , feed_link : String
     , updated_at : Date
     }
 
@@ -26,6 +27,7 @@ decoder =
         |> required "title" string
         |> optional "description" string ""
         |> required "link" (nullable string)
+        |> required "feed_link" string
         |> required "updated_at" date
 
 

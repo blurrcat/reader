@@ -1,7 +1,7 @@
 module Page.Home exposing (Model, Msg, init, update, view, subscriptions)
 
 import Html exposing (..)
-import Html.Attributes exposing (class, style, href)
+import Html.Attributes exposing (class, classList, style, href, target, rel)
 import Html.Events exposing (onClick)
 import RemoteData exposing (WebData)
 import Json.Decode as Decode
@@ -13,6 +13,8 @@ import Api
 import Markdown
 import Date
 import Date.Format as DF
+import FeatherIcons as FIcons
+import Icons
 
 
 type alias Feeds =
@@ -162,7 +164,7 @@ feedsView selectedFeedId feeds =
                     text "Initializing.."
 
                 RemoteData.Loading ->
-                    text "Loading.."
+                    loadingView
 
                 RemoteData.Failure err ->
                     text ("Error: " ++ toString err)
@@ -180,24 +182,51 @@ feedsView selectedFeedId feeds =
             [ content ]
 
 
-itemTitleView : String -> String -> Date.Date -> List (Html msg)
-itemTitleView titleWeight title datetime =
-    [ span
+loadingView : Html msg
+loadingView =
+    div
         [ style
-            [ ( "font-weight", titleWeight )
-            , ( "cursor", "pointer" )
+            [ ( "width", "100%" )
+            , ( "text-align", "center" )
             ]
+        , class "animated rotateIn"
         ]
-        [ text title ]
-    , span
+        [ FIcons.loader
+            |> FIcons.toHtml []
+        ]
+
+
+linkIconView : FIcons.Icon -> Maybe String -> Html msg
+linkIconView icon url =
+    a
+        [ href (url |> Maybe.withDefault "#")
+        , target "_blank"
+        , rel "noopener noreferrer"
+        , style
+            [ ( "color", "black" )
+            , ( "padding-right", "0.5em" )
+            ]
+        , classList [ ( "hidden", url == Nothing ) ]
+        ]
+        [ icon
+            |> FIcons.withSize 1
+            |> FIcons.withSizeUnit "em"
+            |> FIcons.toHtml []
+        ]
+
+
+datetimeView : Date.Date -> Html msg
+datetimeView datetime =
+    span
         [ style
-            [ ( "font-size", "70%" )
+            [ ( "margin-right", "0.5em" )
+            , ( "font-size", "80%" )
+            , ( "vertical-align", "text-top" )
             , ( "color", "#aaa" )
-            , ( "float", "right" )
             ]
         ]
-        [ text (DF.format "%Y-%m-%d %H:%M:%S" datetime) ]
-    ]
+        [ text (DF.format "%Y-%m-%d %H:%M:%S" datetime)
+        ]
 
 
 feedItemView : Msg -> Maybe FeedItem.FeedItemId -> FeedItem.FeedItem -> Html Msg
@@ -220,7 +249,14 @@ feedItemView onClickMsg selectedId item =
         titleView =
             [ div
                 [ onClick onClickMsg ]
-                (itemTitleView titleWeight item.title item.updated_at)
+                [ span
+                    [ style
+                        [ ( "font-weight", titleWeight )
+                        , ( "cursor", "pointer" )
+                        ]
+                    ]
+                    [ text item.title ]
+                ]
             ]
 
         detailView =
@@ -232,7 +268,10 @@ feedItemView onClickMsg selectedId item =
                         ]
                     , class "animated fadeIn"
                     ]
-                    [ a [ href item.link ] [ text item.link ]
+                    [ div []
+                        [ datetimeView item.updated_at
+                        , linkIconView FIcons.externalLink (Just item.link)
+                        ]
                     , Markdown.toHtml [] item.description
                     ]
                 ]
@@ -254,19 +293,26 @@ feedItemsView selectedFeed selectedId items =
         titleContent =
             case selectedFeed of
                 Nothing ->
-                    [ h2 [] [ text "Latest" ]
+                    [ h3 [] [ text "Latest" ]
                     ]
 
                 Just feed ->
-                    [ h2 [] (itemTitleView "bold" feed.title feed.updated_at)
+                    [ h3 [] [ text feed.title ]
+                    , div
+                        []
+                        [ div []
+                            [ datetimeView feed.updated_at
+                            , linkIconView Icons.rss (Just feed.feed_link)
+                            , linkIconView FIcons.externalLink feed.link
+                            ]
+                        ]
                     , p [] [ text feed.description ]
                     ]
 
         titleDiv =
             div
                 [ style
-                    [ ( "padding-bottom", "0.5em" )
-                    , ( "border-bottom", "1px solid #ddd" )
+                    [ ( "border-bottom", "1px solid #999" )
                     ]
                 ]
                 titleContent
@@ -277,7 +323,7 @@ feedItemsView selectedFeed selectedId items =
                     text ""
 
                 RemoteData.Loading ->
-                    text "Loading.."
+                    loadingView
 
                 RemoteData.Failure err ->
                     text ("Error: " ++ toString err)
