@@ -11,6 +11,7 @@ import Http
 import HttpBuilder
 import Api
 import Markdown
+import Date
 import Date.Format as DF
 
 
@@ -25,7 +26,7 @@ type alias FeedItems =
 type alias Model =
     { feeds : WebData Feeds
     , feedItems : WebData FeedItems
-    , selectedFeedId : Maybe Feed.FeedId
+    , selectedFeed : Maybe Feed.Feed
     , selectedFeedItemId : Maybe FeedItem.FeedItemId
     }
 
@@ -40,9 +41,15 @@ getFeeds page =
 
 
 getFeedItems page feedId =
-    ("/feeds/" ++ (Feed.idToString feedId) ++ "/items")
+    "/feed-items/"
         |> Api.list
-            [ ( "page", toString page ) ]
+            [ ( "page", toString page )
+            , ( "feed_id"
+              , feedId
+                    |> Maybe.map Feed.idToString
+                    |> Maybe.withDefault ""
+              )
+            ]
             FeedItem.decoder
         |> RemoteData.sendRequest
         |> Cmd.map FeedItemsResponse
@@ -51,11 +58,13 @@ getFeedItems page feedId =
 init : ( Model, Cmd Msg )
 init =
     { feeds = RemoteData.Loading
-    , feedItems = RemoteData.NotAsked
-    , selectedFeedId = Nothing
+    , feedItems = RemoteData.Loading
+    , selectedFeed = Nothing
     , selectedFeedItemId = Nothing
     }
-        ! [ getFeeds 1 ]
+        ! [ getFeeds 1
+          , getFeedItems 1 Nothing
+          ]
 
 
 type Msg
@@ -79,11 +88,22 @@ update msg model =
             { model | feedItems = resp } ! []
 
         SelectFeed feedId ->
-            { model
-                | selectedFeedId = Just feedId
-                , feedItems = RemoteData.Loading
-            }
-                ! [ getFeedItems 1 feedId ]
+            let
+                selectedFeed =
+                    model.feeds
+                        |> RemoteData.toMaybe
+                        |> Maybe.andThen
+                            (\resp ->
+                                resp.results
+                                    |> List.filter (\f -> f.id == feedId)
+                                    |> List.head
+                            )
+            in
+                { model
+                    | selectedFeed = selectedFeed
+                    , feedItems = RemoteData.Loading
+                }
+                    ! [ getFeedItems 1 (Just feedId) ]
 
         SelectFeedItem feedItemId ->
             let
@@ -160,6 +180,26 @@ feedsView selectedFeedId feeds =
             [ content ]
 
 
+itemTitleView : String -> String -> Date.Date -> List (Html msg)
+itemTitleView titleWeight title datetime =
+    [ span
+        [ style
+            [ ( "font-weight", titleWeight )
+            , ( "cursor", "pointer" )
+            ]
+        ]
+        [ text title ]
+    , span
+        [ style
+            [ ( "font-size", "70%" )
+            , ( "color", "#aaa" )
+            , ( "float", "right" )
+            ]
+        ]
+        [ text (DF.format "%Y-%m-%d %H:%M:%S" datetime) ]
+    ]
+
+
 feedItemView : Msg -> Maybe FeedItem.FeedItemId -> FeedItem.FeedItem -> Html Msg
 feedItemView onClickMsg selectedId item =
     let
@@ -180,22 +220,7 @@ feedItemView onClickMsg selectedId item =
         titleView =
             [ div
                 [ onClick onClickMsg ]
-                [ span
-                    [ style
-                        [ ( "font-weight", titleWeight )
-                        , ( "cursor", "pointer" )
-                        ]
-                    ]
-                    [ text item.title ]
-                , span
-                    [ style
-                        [ ( "font-size", "80%" )
-                        , ( "color", "#aaa" )
-                        , ( "margin-left", "0.5em" )
-                        ]
-                    ]
-                    [ text (DF.format "%Y-%m-%d %H:%M:%S" item.updated_at) ]
-                ]
+                (itemTitleView titleWeight item.title item.updated_at)
             ]
 
         detailView =
@@ -217,16 +242,36 @@ feedItemView onClickMsg selectedId item =
         div
             [ style
                 [ ( "borderBottom", "1px solid #ddd" )
-                , ( "padding", "0.5em" )
+                , ( "padding", "0.5em 0" )
                 ]
             ]
             (titleView ++ detailView)
 
 
-feedItemsView : Maybe FeedItem.FeedItemId -> WebData FeedItems -> Html Msg
-feedItemsView selectedId items =
+feedItemsView : Maybe Feed.Feed -> Maybe FeedItem.FeedItemId -> WebData FeedItems -> Html Msg
+feedItemsView selectedFeed selectedId items =
     let
-        content =
+        titleContent =
+            case selectedFeed of
+                Nothing ->
+                    [ h2 [] [ text "Latest" ]
+                    ]
+
+                Just feed ->
+                    [ h2 [] (itemTitleView "bold" feed.title feed.updated_at)
+                    , p [] [ text feed.description ]
+                    ]
+
+        titleDiv =
+            div
+                [ style
+                    [ ( "padding-bottom", "0.5em" )
+                    , ( "border-bottom", "1px solid #ddd" )
+                    ]
+                ]
+                titleContent
+
+        itemsList =
             case items of
                 RemoteData.NotAsked ->
                     text ""
@@ -243,8 +288,10 @@ feedItemsView selectedId items =
                         |> div [ class "animated fadeIn" ]
     in
         div
-            []
-            [ content ]
+            [ style [ ( "padding", "0 0.5em" ) ] ]
+            [ titleDiv
+            , itemsList
+            ]
 
 
 view : Model -> Html Msg
@@ -257,12 +304,16 @@ view model =
                 [ ( "height", "100%" )
                 ]
             ]
-            [ feedsView model.selectedFeedId model.feeds ]
+            [ model.feeds
+                |> feedsView (model.selectedFeed |> Maybe.map .id)
+            ]
         , div
             [ class "pure-u-3-4"
             , style
                 [ ( "height", "100%" )
                 ]
             ]
-            [ feedItemsView model.selectedFeedItemId model.feedItems ]
+            [ model.feedItems
+                |> feedItemsView model.selectedFeed model.selectedFeedItemId
+            ]
         ]
