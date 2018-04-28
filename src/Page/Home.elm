@@ -160,6 +160,7 @@ feedsView selectedFeedId feeds =
             [ content ]
 
 
+feedItemView : Msg -> Maybe FeedItem.FeedItemId -> FeedItem.FeedItem -> Html Msg
 feedItemView onClickMsg selectedId item =
     let
         isSelected =
@@ -204,6 +205,7 @@ feedItemView onClickMsg selectedId item =
                         [ ( "padding", "1em" )
                         , ( "font-size", "90%" )
                         ]
+                    , class "animated fadeIn"
                     ]
                     [ a [ href item.link ] [ text item.link ]
                     , Markdown.toHtml [] item.description
@@ -238,10 +240,10 @@ feedItemsView selectedId items =
                 RemoteData.Success resp ->
                     resp.results
                         |> List.map (\item -> feedItemView (SelectFeedItem item.id) selectedId item)
-                        |> div []
+                        |> div [ class "animated fadeIn" ]
     in
         div
-            [ style [ ( "padding", "1em" ) ] ]
+            []
             [ content ]
 
 

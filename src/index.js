@@ -1,4 +1,5 @@
 import 'purecss/build/pure.css'
+import 'animate.css/animate.css'
 import './base.css'
 import Elm from './Main.elm'
 
