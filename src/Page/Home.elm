@@ -2,6 +2,7 @@ module Page.Home exposing (Model, Msg, init, update, view, subscriptions)
 
 import Html
 import Css exposing (..)
+import Css.Media as Media
 import Css.Colors as Colors
 import Html.Styled exposing (..)
 import Html.Styled.Attributes exposing (css, class, classList, href, rel, title)
@@ -32,6 +33,7 @@ type alias Model =
     , feedItems : WebData FeedItems
     , selectedFeed : Maybe Feed.Feed
     , selectedFeedItemId : Maybe FeedItem.FeedItemId
+    , menuActive : Bool
     }
 
 
@@ -65,6 +67,7 @@ init =
     , feedItems = RemoteData.Loading
     , selectedFeed = Nothing
     , selectedFeedItemId = Nothing
+    , menuActive = False
     }
         ! [ getFeeds 1
           , getFeedItems 1 Nothing
@@ -77,6 +80,7 @@ type Msg
     | FeedItemsResponse (WebData FeedItems)
     | SelectFeed Feed.FeedId
     | SelectFeedItem FeedItem.FeedItemId
+    | ToggleMenuActive
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -84,6 +88,9 @@ update msg model =
     case msg of
         Noop ->
             model ! []
+
+        ToggleMenuActive ->
+            { model | menuActive = (not model.menuActive) } ! []
 
         FeedsResponse resp ->
             { model | feeds = resp } ! []
@@ -105,6 +112,7 @@ update msg model =
             in
                 { model
                     | selectedFeed = selectedFeed
+                    , menuActive = False
                     , feedItems = RemoteData.Loading
                 }
                     ! [ getFeedItems 1 (Just feedId) ]
@@ -186,6 +194,13 @@ loadingView =
         [ css
             [ width (pct 100)
             , textAlign center
+            , batch
+                [ property "animation-iteration-count" "infinite"
+                , property "-webkit-animation-iteration-count" "infinite"
+                , property "-moz-animation-iteration-count" "infinite"
+                , property "-ms-animation-iteration-count" "infinite"
+                , property "-o-animation-iteration-count" "infinite"
+                ]
             ]
         , class "animated rotateIn"
         ]
@@ -255,7 +270,7 @@ feedItemView onClickMsg selectedId item =
                 [ div
                     [ css
                         [ padding (Css.em 1)
-                        , fontSize (pct 90)
+                        , fontSize (pct 95)
                         ]
                     , class "animated fadeIn"
                     ]
@@ -336,35 +351,124 @@ feedItemsView selectedFeed selectedId items =
                             |> div [ class "animated fadeIn" ]
                         ]
     in
-        div
-            [ css [ padding2 zero (Css.em 0.5) ] ]
-            [ content
-            ]
+        content
 
 
 styledView : Model -> Html Msg
 styledView model =
-    div
-        [ class "pure-g" ]
-        [ div
-            [ class "pure-u-1-4"
-            , css
-                [ height (pct 100)
+    let
+        menuWidth =
+            250
+
+        widthThreshold =
+            Css.em 48
+
+        menuButtonIcon =
+            if model.menuActive then
+                Icons.x
+            else
+                Icons.menu
+
+        menuButtonLeft =
+            if model.menuActive then
+                menuWidth
+            else
+                0
+
+        transition =
+            batch
+                [ property "transition" "all 0.2s ease-out"
+                , property "-webkit-transition" "all 0.2s ease-out"
+                , property "-moz-transition" "all 0.2s ease-out"
+                , property "-ms-transition" "all 0.2s ease-out"
+                , property "-o-transition" "all 0.2s ease-out"
+                ]
+    in
+        div
+            -- layout
+            [ css
+                [ position relative
+                , left zero
+                , paddingLeft zero
+                , transition
+                , Media.withMedia [ Media.all [ Media.minWidth widthThreshold ] ]
+                    [ paddingLeft (px menuWidth)
+                    , left zero
+                    ]
+                , Media.withMedia [ Media.all [ Media.maxWidth widthThreshold ] ]
+                    [ left (px menuButtonLeft) ]
                 ]
             ]
-            [ model.feeds
-                |> feedsView (model.selectedFeed |> Maybe.map .id)
-            ]
-        , div
-            [ class "pure-u-3-4"
-            , css
-                [ height (pct 100)
+            [ a
+                -- menu button
+                [ css
+                    [ position fixed
+                    , display block
+                    , top zero
+                    , left (px menuButtonLeft)
+                    , zIndex (int 10)
+                    , height auto
+                    , transition
+                    , padding2 (Css.em 0.3) (Css.em 0.6)
+                    , Media.withMedia [ Media.all [ Media.minWidth widthThreshold ] ]
+                        [ position fixed
+                        , top zero
+                        , display none
+                        ]
+                    ]
+                , onClick ToggleMenuActive
+                ]
+                [ menuButtonIcon
+                    |> Icons.toHtmlStyled []
+                ]
+            , div
+                -- menu
+                [ css
+                    [ width (px menuWidth)
+                    , marginLeft (px -menuWidth)
+                    , position fixed
+                    , top zero
+                    , left (px menuWidth)
+                    , bottom zero
+                    , zIndex (int 1000)
+                    , overflowY auto
+                    , transition
+                    , Media.withMedia [ Media.all [ Media.maxWidth widthThreshold ] ]
+                        [ left (px menuButtonLeft)
+                        ]
+                    ]
+                ]
+                [ model.feeds
+                    |> feedsView (model.selectedFeed |> Maybe.map .id)
+                ]
+            , div
+                -- main
+                [ css
+                    [ color (hex "#333")
+                    ]
+                ]
+                [ div
+                    -- header
+                    [ css
+                        [ minHeight (Css.em 1) ]
+                    ]
+                    []
+                , div
+                    -- content
+                    [ css
+                        [ margin2 zero auto
+                        , padding2 zero (Css.em 2)
+                        , maxWidth (px 800)
+                        , marginBottom (px 50)
+
+                        -- , lineHeight (Css.em 1.6)
+                        ]
+                    ]
+                    [ model.feedItems
+                        |> feedItemsView model.selectedFeed model.selectedFeedItemId
+                    ]
                 ]
             ]
-            [ model.feedItems
-                |> feedItemsView model.selectedFeed model.selectedFeedItemId
-            ]
-        ]
 
 
 view =
