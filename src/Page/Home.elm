@@ -1,8 +1,9 @@
 module Page.Home exposing (Model, Msg, init, update, view, subscriptions)
 
-import Html exposing (..)
-import Html.Attributes exposing (class, classList, style, href, target, rel, title)
-import Html.Events exposing (onClick)
+import Html
+import Html.Styled exposing (..)
+import Html.Styled.Attributes exposing (class, classList, style, href, target, rel, title)
+import Html.Styled.Events exposing (onClick)
 import RemoteData exposing (WebData)
 import Json.Decode as Decode
 import Data.Feed as Feed
@@ -13,7 +14,6 @@ import Api
 import Markdown
 import Date
 import Date.Format as DF
-import FeatherIcons as FIcons
 import Icons
 
 
@@ -187,12 +187,12 @@ loadingView =
             ]
         , class "animated rotateIn"
         ]
-        [ FIcons.loader
-            |> FIcons.toHtml []
+        [ Icons.loader
+            |> Icons.toHtmlStyled []
         ]
 
 
-linkIconView : FIcons.Icon -> Maybe String -> Html msg
+linkIconView : Icons.Icon -> Maybe String -> Html msg
 linkIconView icon url =
     a
         [ href (url |> Maybe.withDefault "#")
@@ -205,9 +205,9 @@ linkIconView icon url =
         , classList [ ( "hidden", url == Nothing ) ]
         ]
         [ icon
-            |> FIcons.withSize 1
-            |> FIcons.withSizeUnit "em"
-            |> FIcons.toHtml []
+            |> Icons.withSize 1
+            |> Icons.withSizeUnit "em"
+            |> Icons.toHtmlStyled []
         ]
 
 
@@ -266,9 +266,11 @@ feedItemView onClickMsg selectedId item =
                     ]
                     [ div []
                         [ datetimeView item.updated_at
-                        , linkIconView FIcons.externalLink (Just item.link)
+                        , linkIconView Icons.externalLink (Just item.link)
                         ]
-                    , Markdown.toHtml [] item.description
+                    , item.description
+                        |> Markdown.toHtml []
+                        |> fromUnstyled
                     ]
                 ]
             else
@@ -299,7 +301,7 @@ feedItemsView selectedFeed selectedId items =
                         [ div []
                             [ datetimeView feed.updated_at
                             , linkIconView Icons.rss (Just feed.feed_link)
-                            , linkIconView FIcons.externalLink feed.link
+                            , linkIconView Icons.externalLink feed.link
                             ]
                         ]
                     , p
@@ -345,8 +347,8 @@ feedItemsView selectedFeed selectedId items =
             ]
 
 
-view : Model -> Html Msg
-view model =
+styledView : Model -> Html Msg
+styledView model =
     div
         [ class "pure-g" ]
         [ div
@@ -368,3 +370,7 @@ view model =
                 |> feedItemsView model.selectedFeed model.selectedFeedItemId
             ]
         ]
+
+
+view =
+    styledView >> toUnstyled
