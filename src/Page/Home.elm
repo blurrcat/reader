@@ -1,8 +1,12 @@
 module Page.Home exposing (Model, Msg, init, update, view, subscriptions)
 
-import Html exposing (..)
-import Html.Attributes exposing (class, classList, style, href, target, rel)
-import Html.Events exposing (onClick)
+import Html
+import Css exposing (..)
+import Css.Media as Media
+import Css.Colors as Colors
+import Html.Styled exposing (..)
+import Html.Styled.Attributes exposing (css, class, classList, href, rel, title)
+import Html.Styled.Events exposing (onClick)
 import RemoteData exposing (WebData)
 import Json.Decode as Decode
 import Data.Feed as Feed
@@ -13,7 +17,6 @@ import Api
 import Markdown
 import Date
 import Date.Format as DF
-import FeatherIcons as FIcons
 import Icons
 
 
@@ -30,6 +33,7 @@ type alias Model =
     , feedItems : WebData FeedItems
     , selectedFeed : Maybe Feed.Feed
     , selectedFeedItemId : Maybe FeedItem.FeedItemId
+    , menuActive : Bool
     }
 
 
@@ -63,6 +67,7 @@ init =
     , feedItems = RemoteData.Loading
     , selectedFeed = Nothing
     , selectedFeedItemId = Nothing
+    , menuActive = False
     }
         ! [ getFeeds 1
           , getFeedItems 1 Nothing
@@ -75,6 +80,7 @@ type Msg
     | FeedItemsResponse (WebData FeedItems)
     | SelectFeed Feed.FeedId
     | SelectFeedItem FeedItem.FeedItemId
+    | ToggleMenuActive
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -82,6 +88,9 @@ update msg model =
     case msg of
         Noop ->
             model ! []
+
+        ToggleMenuActive ->
+            { model | menuActive = (not model.menuActive) } ! []
 
         FeedsResponse resp ->
             { model | feeds = resp } ! []
@@ -103,6 +112,7 @@ update msg model =
             in
                 { model
                     | selectedFeed = selectedFeed
+                    , menuActive = False
                     , feedItems = RemoteData.Loading
                 }
                     ! [ getFeedItems 1 (Just feedId) ]
@@ -130,29 +140,28 @@ subscriptions model =
 
 feedView : Msg -> Maybe Feed.FeedId -> Feed.Feed -> Html Msg
 feedView onClickMsg selectedFeedId feed =
-    let
-        selectedStyle =
-            case selectedFeedId of
-                Just fid ->
-                    if feed.id == fid then
-                        ( "font-weight", "bold" )
-                    else
-                        ( "font-weight", "normal" )
-
-                Nothing ->
-                    ( "font-weight", "normal" )
-
-        styles =
-            selectedStyle
-                :: [ ( "borderBottom", "1px solid #ddd" )
-                   , ( "padding", "0.5em" )
-                   , ( "cursor", "pointer" )
-                   ]
-    in
-        div
-            [ style styles, onClick onClickMsg ]
-            [ text feed.title
+    li
+        [ class "pure-menu-item"
+        , classList
+            [ ( "pure-menu-selected"
+              , selectedFeedId
+                    |> Maybe.map ((==) feed.id)
+                    |> (==) (Just True)
+              )
             ]
+        , onClick onClickMsg
+        ]
+        [ a
+            [ href "#"
+            , title feed.title
+            , class "pure-menu-link"
+            , css
+                [ overflow hidden
+                , textOverflow ellipsis
+                ]
+            ]
+            [ text feed.title ]
+        ]
 
 
 feedsView : Maybe Feed.FeedId -> WebData Feeds -> Html Msg
@@ -172,57 +181,61 @@ feedsView selectedFeedId feeds =
                 RemoteData.Success resp ->
                     resp.results
                         |> List.map (\f -> feedView (SelectFeed f.id) selectedFeedId f)
-                        |> div []
+                        |> ul [ class "pure-menu-list" ]
     in
         div
-            [ style
-                [ ( "borderRight", "1px solid #555" )
-                ]
-            ]
+            [ class "pure-menu" ]
             [ content ]
 
 
 loadingView : Html msg
 loadingView =
     div
-        [ style
-            [ ( "width", "100%" )
-            , ( "text-align", "center" )
+        [ css
+            [ width (pct 100)
+            , textAlign center
+            , batch
+                [ property "animation-iteration-count" "infinite"
+                , property "-webkit-animation-iteration-count" "infinite"
+                , property "-moz-animation-iteration-count" "infinite"
+                , property "-ms-animation-iteration-count" "infinite"
+                , property "-o-animation-iteration-count" "infinite"
+                ]
             ]
         , class "animated rotateIn"
         ]
-        [ FIcons.loader
-            |> FIcons.toHtml []
+        [ Icons.loader
+            |> Icons.toHtmlStyled []
         ]
 
 
-linkIconView : FIcons.Icon -> Maybe String -> Html msg
+linkIconView : Icons.Icon -> Maybe String -> Html msg
 linkIconView icon url =
     a
         [ href (url |> Maybe.withDefault "#")
-        , target "_blank"
+        , Html.Styled.Attributes.target "_blank"
         , rel "noopener noreferrer"
-        , style
-            [ ( "color", "black" )
-            , ( "padding-right", "0.5em" )
+        , css
+            [ color Colors.black
+            , paddingRight (Css.em 0.5)
             ]
         , classList [ ( "hidden", url == Nothing ) ]
         ]
         [ icon
-            |> FIcons.withSize 1
-            |> FIcons.withSizeUnit "em"
-            |> FIcons.toHtml []
+            |> Icons.withSize 1
+            |> Icons.withSizeUnit "em"
+            |> Icons.toHtmlStyled []
         ]
 
 
 datetimeView : Date.Date -> Html msg
 datetimeView datetime =
     span
-        [ style
-            [ ( "margin-right", "0.5em" )
-            , ( "font-size", "80%" )
-            , ( "vertical-align", "text-top" )
-            , ( "color", "#aaa" )
+        [ css
+            [ marginRight (Css.em 0.5)
+            , fontSize (pct 80)
+            , verticalAlign textTop
+            , color (hex "#aaa")
             ]
         ]
         [ text (DF.format "%Y-%m-%d %H:%M:%S" datetime)
@@ -240,19 +253,12 @@ feedItemView onClickMsg selectedId item =
                 Just selected ->
                     selected == item.id
 
-        titleWeight =
-            if isSelected then
-                "bold"
-            else
-                "normal"
-
         titleView =
             [ div
                 [ onClick onClickMsg ]
                 [ span
-                    [ style
-                        [ ( "font-weight", titleWeight )
-                        , ( "cursor", "pointer" )
+                    [ css
+                        [ cursor pointer
                         ]
                     ]
                     [ text item.title ]
@@ -262,26 +268,28 @@ feedItemView onClickMsg selectedId item =
         detailView =
             if isSelected then
                 [ div
-                    [ style
-                        [ ( "padding", "1em" )
-                        , ( "font-size", "90%" )
+                    [ css
+                        [ padding (Css.em 1)
+                        , fontSize (pct 95)
                         ]
                     , class "animated fadeIn"
                     ]
                     [ div []
                         [ datetimeView item.updated_at
-                        , linkIconView FIcons.externalLink (Just item.link)
+                        , linkIconView Icons.externalLink (Just item.link)
                         ]
-                    , Markdown.toHtml [] item.description
+                    , item.description
+                        |> Markdown.toHtml []
+                        |> fromUnstyled
                     ]
                 ]
             else
                 []
     in
         div
-            [ style
-                [ ( "borderBottom", "1px solid #ddd" )
-                , ( "padding", "0.5em 0" )
+            [ css
+                [ borderBottom3 (px 1) solid (hex "#ddd")
+                , padding2 (Css.em 0.5) zero
                 ]
             ]
             (titleView ++ detailView)
@@ -303,21 +311,27 @@ feedItemsView selectedFeed selectedId items =
                         [ div []
                             [ datetimeView feed.updated_at
                             , linkIconView Icons.rss (Just feed.feed_link)
-                            , linkIconView FIcons.externalLink feed.link
+                            , linkIconView Icons.externalLink feed.link
                             ]
                         ]
-                    , p [] [ text feed.description ]
+                    , p
+                        [ css
+                            [ fontStyle italic
+                            , fontSize (pct 80)
+                            ]
+                        ]
+                        [ text feed.description ]
                     ]
 
         titleDiv =
             div
-                [ style
-                    [ ( "border-bottom", "1px solid #999" )
+                [ css
+                    [ borderBottom3 (px 1) solid (hex "#999")
                     ]
                 ]
                 titleContent
 
-        itemsList =
+        content =
             case items of
                 RemoteData.NotAsked ->
                     text ""
@@ -329,37 +343,133 @@ feedItemsView selectedFeed selectedId items =
                     text ("Error: " ++ toString err)
 
                 RemoteData.Success resp ->
-                    resp.results
-                        |> List.map (\item -> feedItemView (SelectFeedItem item.id) selectedId item)
-                        |> div [ class "animated fadeIn" ]
+                    div
+                        []
+                        [ titleDiv
+                        , resp.results
+                            |> List.map (\item -> feedItemView (SelectFeedItem item.id) selectedId item)
+                            |> div [ class "animated fadeIn" ]
+                        ]
+    in
+        content
+
+
+styledView : Model -> Html Msg
+styledView model =
+    let
+        menuWidth =
+            250
+
+        widthThreshold =
+            Css.em 48
+
+        menuButtonIcon =
+            if model.menuActive then
+                Icons.x
+            else
+                Icons.menu
+
+        menuButtonLeft =
+            if model.menuActive then
+                menuWidth
+            else
+                0
+
+        transition =
+            batch
+                [ property "transition" "all 0.2s ease-out"
+                , property "-webkit-transition" "all 0.2s ease-out"
+                , property "-moz-transition" "all 0.2s ease-out"
+                , property "-ms-transition" "all 0.2s ease-out"
+                , property "-o-transition" "all 0.2s ease-out"
+                ]
     in
         div
-            [ style [ ( "padding", "0 0.5em" ) ] ]
-            [ titleDiv
-            , itemsList
+            -- layout
+            [ css
+                [ position relative
+                , left zero
+                , paddingLeft zero
+                , transition
+                , Media.withMedia [ Media.all [ Media.minWidth widthThreshold ] ]
+                    [ paddingLeft (px menuWidth)
+                    , left zero
+                    ]
+                , Media.withMedia [ Media.all [ Media.maxWidth widthThreshold ] ]
+                    [ left (px menuButtonLeft) ]
+                ]
+            ]
+            [ a
+                -- menu button
+                [ css
+                    [ position fixed
+                    , display block
+                    , top zero
+                    , left (px menuButtonLeft)
+                    , zIndex (int 10)
+                    , height auto
+                    , transition
+                    , padding2 (Css.em 0.3) (Css.em 0.6)
+                    , Media.withMedia [ Media.all [ Media.minWidth widthThreshold ] ]
+                        [ position fixed
+                        , top zero
+                        , display none
+                        ]
+                    ]
+                , onClick ToggleMenuActive
+                ]
+                [ menuButtonIcon
+                    |> Icons.toHtmlStyled []
+                ]
+            , div
+                -- menu
+                [ css
+                    [ width (px menuWidth)
+                    , marginLeft (px -menuWidth)
+                    , position fixed
+                    , top zero
+                    , left (px menuWidth)
+                    , bottom zero
+                    , zIndex (int 1000)
+                    , overflowY auto
+                    , transition
+                    , Media.withMedia [ Media.all [ Media.maxWidth widthThreshold ] ]
+                        [ left (px menuButtonLeft)
+                        ]
+                    ]
+                ]
+                [ model.feeds
+                    |> feedsView (model.selectedFeed |> Maybe.map .id)
+                ]
+            , div
+                -- main
+                [ css
+                    [ color (hex "#333")
+                    ]
+                ]
+                [ div
+                    -- header
+                    [ css
+                        [ minHeight (Css.em 1) ]
+                    ]
+                    []
+                , div
+                    -- content
+                    [ css
+                        [ margin2 zero auto
+                        , padding2 zero (Css.em 2)
+                        , maxWidth (px 800)
+                        , marginBottom (px 50)
+
+                        -- , lineHeight (Css.em 1.6)
+                        ]
+                    ]
+                    [ model.feedItems
+                        |> feedItemsView model.selectedFeed model.selectedFeedItemId
+                    ]
+                ]
             ]
 
 
-view : Model -> Html Msg
-view model =
-    div
-        [ class "pure-g" ]
-        [ div
-            [ class "pure-u-1-4"
-            , style
-                [ ( "height", "100%" )
-                ]
-            ]
-            [ model.feeds
-                |> feedsView (model.selectedFeed |> Maybe.map .id)
-            ]
-        , div
-            [ class "pure-u-3-4"
-            , style
-                [ ( "height", "100%" )
-                ]
-            ]
-            [ model.feedItems
-                |> feedItemsView model.selectedFeed model.selectedFeedItemId
-            ]
-        ]
+view =
+    styledView >> toUnstyled
