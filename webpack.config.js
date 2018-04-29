@@ -2,6 +2,8 @@ const path = require("path");
 const env = process.env.NODE_ENV ? process.env.NODE_ENV : 'development';
 const HtmlWebpackPlugin = require('html-webpack-plugin');
 
+console.log('building in ' + env + ' environment..')
+
 
 module.exports = {
   mode: env,

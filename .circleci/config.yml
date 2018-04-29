@@ -2,7 +2,7 @@ version: 2
 jobs:
   build:
     docker:
-      - image: node:9
+      - image: totallymoney/circleci-elm-compile
     working_directory: ~/reader
     steps:
       - checkout
@@ -13,7 +13,7 @@ jobs:
       - run: |
           npm install
       - run: |
-          NODE_ENV=production npm run build
+          NODE_ENV=production sysconfcpus -n 1 npm run build
       - save_cache:
           key: node-v1-{{ checksum "package.json" }}
           paths:
