@@ -1,8 +1,10 @@
 module Page.Home exposing (Model, Msg, init, update, view, subscriptions)
 
 import Html
+import Css exposing (..)
+import Css.Colors as Colors
 import Html.Styled exposing (..)
-import Html.Styled.Attributes exposing (class, classList, style, href, target, rel, title)
+import Html.Styled.Attributes exposing (css, class, classList, href, rel, title)
 import Html.Styled.Events exposing (onClick)
 import RemoteData exposing (WebData)
 import Json.Decode as Decode
@@ -145,9 +147,9 @@ feedView onClickMsg selectedFeedId feed =
             [ href "#"
             , title feed.title
             , class "pure-menu-link"
-            , style
-                [ ( "overflow", "hidden" )
-                , ( "text-overflow", "ellipsis" )
+            , css
+                [ overflow hidden
+                , textOverflow ellipsis
                 ]
             ]
             [ text feed.title ]
@@ -181,9 +183,9 @@ feedsView selectedFeedId feeds =
 loadingView : Html msg
 loadingView =
     div
-        [ style
-            [ ( "width", "100%" )
-            , ( "text-align", "center" )
+        [ css
+            [ width (pct 100)
+            , textAlign center
             ]
         , class "animated rotateIn"
         ]
@@ -196,11 +198,11 @@ linkIconView : Icons.Icon -> Maybe String -> Html msg
 linkIconView icon url =
     a
         [ href (url |> Maybe.withDefault "#")
-        , target "_blank"
+        , Html.Styled.Attributes.target "_blank"
         , rel "noopener noreferrer"
-        , style
-            [ ( "color", "black" )
-            , ( "padding-right", "0.5em" )
+        , css
+            [ color Colors.black
+            , paddingRight (Css.em 0.5)
             ]
         , classList [ ( "hidden", url == Nothing ) ]
         ]
@@ -214,11 +216,11 @@ linkIconView icon url =
 datetimeView : Date.Date -> Html msg
 datetimeView datetime =
     span
-        [ style
-            [ ( "margin-right", "0.5em" )
-            , ( "font-size", "80%" )
-            , ( "vertical-align", "text-top" )
-            , ( "color", "#aaa" )
+        [ css
+            [ marginRight (Css.em 0.5)
+            , fontSize (pct 80)
+            , verticalAlign textTop
+            , color (hex "#aaa")
             ]
         ]
         [ text (DF.format "%Y-%m-%d %H:%M:%S" datetime)
@@ -236,19 +238,12 @@ feedItemView onClickMsg selectedId item =
                 Just selected ->
                     selected == item.id
 
-        titleWeight =
-            if isSelected then
-                "bold"
-            else
-                "normal"
-
         titleView =
             [ div
                 [ onClick onClickMsg ]
                 [ span
-                    [ style
-                        [ ( "font-weight", titleWeight )
-                        , ( "cursor", "pointer" )
+                    [ css
+                        [ cursor pointer
                         ]
                     ]
                     [ text item.title ]
@@ -258,9 +253,9 @@ feedItemView onClickMsg selectedId item =
         detailView =
             if isSelected then
                 [ div
-                    [ style
-                        [ ( "padding", "1em" )
-                        , ( "font-size", "90%" )
+                    [ css
+                        [ padding (Css.em 1)
+                        , fontSize (pct 90)
                         ]
                     , class "animated fadeIn"
                     ]
@@ -277,9 +272,9 @@ feedItemView onClickMsg selectedId item =
                 []
     in
         div
-            [ style
-                [ ( "borderBottom", "1px solid #ddd" )
-                , ( "padding", "0.5em 0" )
+            [ css
+                [ borderBottom3 (px 1) solid (hex "#ddd")
+                , padding2 (Css.em 0.5) zero
                 ]
             ]
             (titleView ++ detailView)
@@ -305,9 +300,9 @@ feedItemsView selectedFeed selectedId items =
                             ]
                         ]
                     , p
-                        [ style
-                            [ ( "font-style", "italic" )
-                            , ( "font-size", "80%" )
+                        [ css
+                            [ fontStyle italic
+                            , fontSize (pct 80)
                             ]
                         ]
                         [ text feed.description ]
@@ -315,8 +310,8 @@ feedItemsView selectedFeed selectedId items =
 
         titleDiv =
             div
-                [ style
-                    [ ( "border-bottom", "1px solid #999" )
+                [ css
+                    [ borderBottom3 (px 1) solid (hex "#999")
                     ]
                 ]
                 titleContent
@@ -342,7 +337,7 @@ feedItemsView selectedFeed selectedId items =
                         ]
     in
         div
-            [ style [ ( "padding", "0 0.5em" ) ] ]
+            [ css [ padding2 zero (Css.em 0.5) ] ]
             [ content
             ]
 
@@ -353,8 +348,8 @@ styledView model =
         [ class "pure-g" ]
         [ div
             [ class "pure-u-1-4"
-            , style
-                [ ( "height", "100%" )
+            , css
+                [ height (pct 100)
                 ]
             ]
             [ model.feeds
@@ -362,8 +357,8 @@ styledView model =
             ]
         , div
             [ class "pure-u-3-4"
-            , style
-                [ ( "height", "100%" )
+            , css
+                [ height (pct 100)
                 ]
             ]
             [ model.feedItems
