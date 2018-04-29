@@ -1,7 +1,7 @@
 module Page.Home exposing (Model, Msg, init, update, view, subscriptions)
 
 import Html exposing (..)
-import Html.Attributes exposing (class, classList, style, href, target, rel)
+import Html.Attributes exposing (class, classList, style, href, target, rel, title)
 import Html.Events exposing (onClick)
 import RemoteData exposing (WebData)
 import Json.Decode as Decode
@@ -130,29 +130,28 @@ subscriptions model =
 
 feedView : Msg -> Maybe Feed.FeedId -> Feed.Feed -> Html Msg
 feedView onClickMsg selectedFeedId feed =
-    let
-        selectedStyle =
-            case selectedFeedId of
-                Just fid ->
-                    if feed.id == fid then
-                        ( "font-weight", "bold" )
-                    else
-                        ( "font-weight", "normal" )
-
-                Nothing ->
-                    ( "font-weight", "normal" )
-
-        styles =
-            selectedStyle
-                :: [ ( "borderBottom", "1px solid #ddd" )
-                   , ( "padding", "0.5em" )
-                   , ( "cursor", "pointer" )
-                   ]
-    in
-        div
-            [ style styles, onClick onClickMsg ]
-            [ text feed.title
+    li
+        [ class "pure-menu-item"
+        , classList
+            [ ( "pure-menu-selected"
+              , selectedFeedId
+                    |> Maybe.map ((==) feed.id)
+                    |> (==) (Just True)
+              )
             ]
+        , onClick onClickMsg
+        ]
+        [ a
+            [ href "#"
+            , title feed.title
+            , class "pure-menu-link"
+            , style
+                [ ( "overflow", "hidden" )
+                , ( "text-overflow", "ellipsis" )
+                ]
+            ]
+            [ text feed.title ]
+        ]
 
 
 feedsView : Maybe Feed.FeedId -> WebData Feeds -> Html Msg
@@ -172,13 +171,10 @@ feedsView selectedFeedId feeds =
                 RemoteData.Success resp ->
                     resp.results
                         |> List.map (\f -> feedView (SelectFeed f.id) selectedFeedId f)
-                        |> div []
+                        |> ul [ class "pure-menu-list" ]
     in
         div
-            [ style
-                [ ( "borderRight", "1px solid #555" )
-                ]
-            ]
+            [ class "pure-menu" ]
             [ content ]
 
 
@@ -306,7 +302,13 @@ feedItemsView selectedFeed selectedId items =
                             , linkIconView FIcons.externalLink feed.link
                             ]
                         ]
-                    , p [] [ text feed.description ]
+                    , p
+                        [ style
+                            [ ( "font-style", "italic" )
+                            , ( "font-size", "80%" )
+                            ]
+                        ]
+                        [ text feed.description ]
                     ]
 
         titleDiv =
@@ -317,7 +319,7 @@ feedItemsView selectedFeed selectedId items =
                 ]
                 titleContent
 
-        itemsList =
+        content =
             case items of
                 RemoteData.NotAsked ->
                     text ""
@@ -329,14 +331,17 @@ feedItemsView selectedFeed selectedId items =
                     text ("Error: " ++ toString err)
 
                 RemoteData.Success resp ->
-                    resp.results
-                        |> List.map (\item -> feedItemView (SelectFeedItem item.id) selectedId item)
-                        |> div [ class "animated fadeIn" ]
+                    div
+                        []
+                        [ titleDiv
+                        , resp.results
+                            |> List.map (\item -> feedItemView (SelectFeedItem item.id) selectedId item)
+                            |> div [ class "animated fadeIn" ]
+                        ]
     in
         div
             [ style [ ( "padding", "0 0.5em" ) ] ]
-            [ titleDiv
-            , itemsList
+            [ content
             ]
 
 
