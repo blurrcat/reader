@@ -5,7 +5,7 @@ import Css exposing (..)
 import Css.Media as Media
 import Css.Colors as Colors
 import Html.Styled exposing (..)
-import Html.Styled.Attributes exposing (css, class, classList, href, rel, title)
+import Html.Styled.Attributes exposing (css, class, classList, href, rel, title, id)
 import Html.Styled.Events exposing (onClick)
 import RemoteData exposing (WebData)
 import Json.Decode as Decode
@@ -386,7 +386,8 @@ styledView model =
     in
         div
             -- layout
-            [ css
+            [ id "home"
+            , css
                 [ position relative
                 , left zero
                 , paddingLeft zero
@@ -460,8 +461,6 @@ styledView model =
                         , padding2 zero (Css.em 2)
                         , maxWidth (px 800)
                         , marginBottom (px 50)
-
-                        -- , lineHeight (Css.em 1.6)
                         ]
                     ]
                     [ model.feedItems

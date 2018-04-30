@@ -20,7 +20,8 @@ module.exports = {
         viewport: 'width=device-width, initial-scale=1'
       },
       hash: true
-    })
+    }),
+
   ],
 
   output: {
@@ -31,11 +32,19 @@ module.exports = {
   module: {
     rules: [
       {
-        test: /\.(css|scss)$/,
+        test: /\.css$/,
         use: [
           'style-loader',
           'css-loader',
-          'postcss-loader'
+        ]
+      },
+      {
+        test: /\.styl(us)?$/,
+        use: [
+          'style-loader',
+          'css-loader',
+          'postcss-loader',
+          'stylus-loader',
         ]
       },
       {
