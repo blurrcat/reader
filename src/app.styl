@@ -1,2 +1,90 @@
 #home
-  color: red
+  menuWidth = 250px
+  smallWidth = 48em
+
+  color: #555
+  position: relative
+  left: 0
+  top: 0
+
+  .loading
+    width: 100%
+    text-align: center
+    animation-iteration-count: infinite
+
+  .link-icon
+    color: black
+    padding-right: .5em
+
+  .datetime
+    margin-right: .5em
+    font-size: 80%
+    vertical-align: text-top
+    color: #aaa
+
+  #menu-btn
+    display: none
+
+    @media (max-width: smallWidth)
+      display: block
+      position: fixed
+      top: 0
+      left: 0
+      z-index: 10
+      height: auto
+      transition: all 0.2s ease-out
+      padding: .3em .6em
+      &.active
+        left: menuWidth
+
+  #menu
+    position: fixed
+    top: 0
+    left: 0
+    overflow-y: auto
+    width: menuWidth
+    transition: all 0.2s ease-out
+    background-color: white
+
+    @media (max-width: smallWidth)
+      z-index: 1000
+      left: -(menuWidth)
+      &.active
+        left: 0
+  
+  #main
+    padding-left: menuWidth
+    overflow-y: scroll
+
+    @media (max-width: smallWidth)
+      padding-left: 0
+
+    #header
+      min-height: 1em
+
+    #content
+      max-width: 800px
+      margin: 0 auto
+      padding 0 2em
+
+      .feed
+        border-bottom: 1px solid #999
+        .desc
+          font-style: italic
+          font-size: 80%
+
+      .feed-items
+        margin: 0 auto
+
+      .feed-item
+        border-bottom: 1px solid #ddd
+        padding: 0.5em 0
+        .title
+          cursor: pointer
+          &.selected
+            font-weight: bold
+        .body
+          padding: 1em
+          font-size: 95%
+
+
