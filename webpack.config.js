@@ -43,7 +43,14 @@ module.exports = {
         use: [
           'style-loader',
           'css-loader',
-          'postcss-loader',
+          {
+              loader: 'postcss-loader',
+              options: {
+                  plugins: () => [
+                      require('autoprefixer')(),
+                  ],
+              }
+          },
           'stylus-loader',
         ]
       },
@@ -77,7 +84,6 @@ module.exports = {
     inline: true,
     compress: true,
     stats: { colors: true },
-    open: true,
   },
 
 

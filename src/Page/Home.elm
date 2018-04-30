@@ -359,6 +359,11 @@ view model =
                 -- main
                 [ id "main" ]
                 [ div
+                    [ class "overlay"
+                    , classList [ ( "active", model.menuActive ) ]
+                    ]
+                    []
+                , div
                     [ id "header"
                     ]
                     []
