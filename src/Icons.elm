@@ -13,11 +13,9 @@ module Icons
         , withStrokeWidth
         , withViewBox
         , toHtml
-        , toHtmlStyled
         )
 
 import Html exposing (Html)
-import Html.Styled as Styled exposing (fromUnstyled)
 import Svg exposing (Svg, svg)
 import Svg.Attributes exposing (..)
 
@@ -115,13 +113,6 @@ toHtml attributes (Icon { src, attrs }) =
         src
             |> List.map (Svg.map never)
             |> svg combinedAttributes
-
-
-toHtmlStyled : List (Svg.Attribute msg) -> Icon -> Styled.Html msg
-toHtmlStyled attributes icon =
-    icon
-        |> toHtml attributes
-        |> fromUnstyled
 
 
 externalLink : Icon

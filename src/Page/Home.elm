@@ -1,12 +1,18 @@
 module Page.Home exposing (Model, Msg, init, update, view, subscriptions)
 
-import Html
-import Css exposing (..)
-import Css.Media as Media
-import Css.Colors as Colors
-import Html.Styled exposing (..)
-import Html.Styled.Attributes exposing (css, class, classList, href, rel, title)
-import Html.Styled.Events exposing (onClick)
+import Html exposing (..)
+import Html.Attributes
+    exposing
+        ( style
+        , class
+        , classList
+        , href
+        , rel
+        , title
+        , id
+        , target
+        )
+import Html.Events exposing (onClick)
 import RemoteData exposing (WebData)
 import Json.Decode as Decode
 import Data.Feed as Feed
@@ -155,9 +161,9 @@ feedView onClickMsg selectedFeedId feed =
             [ href "#"
             , title feed.title
             , class "pure-menu-link"
-            , css
-                [ overflow hidden
-                , textOverflow ellipsis
+            , style
+                [ ( "overflow", "hidden" )
+                , ( "text-overflow", "ellipsis" )
                 ]
             ]
             [ text feed.title ]
@@ -191,21 +197,10 @@ feedsView selectedFeedId feeds =
 loadingView : Html msg
 loadingView =
     div
-        [ css
-            [ width (pct 100)
-            , textAlign center
-            , batch
-                [ property "animation-iteration-count" "infinite"
-                , property "-webkit-animation-iteration-count" "infinite"
-                , property "-moz-animation-iteration-count" "infinite"
-                , property "-ms-animation-iteration-count" "infinite"
-                , property "-o-animation-iteration-count" "infinite"
-                ]
-            ]
-        , class "animated rotateIn"
+        [ class "animated rotateIn loading"
         ]
         [ Icons.loader
-            |> Icons.toHtmlStyled []
+            |> Icons.toHtml []
         ]
 
 
@@ -213,30 +208,22 @@ linkIconView : Icons.Icon -> Maybe String -> Html msg
 linkIconView icon url =
     a
         [ href (url |> Maybe.withDefault "#")
-        , Html.Styled.Attributes.target "_blank"
+        , target "_blank"
         , rel "noopener noreferrer"
-        , css
-            [ color Colors.black
-            , paddingRight (Css.em 0.5)
-            ]
+        , class "link-icon"
         , classList [ ( "hidden", url == Nothing ) ]
         ]
         [ icon
             |> Icons.withSize 1
             |> Icons.withSizeUnit "em"
-            |> Icons.toHtmlStyled []
+            |> Icons.toHtml []
         ]
 
 
 datetimeView : Date.Date -> Html msg
 datetimeView datetime =
     span
-        [ css
-            [ marginRight (Css.em 0.5)
-            , fontSize (pct 80)
-            , verticalAlign textTop
-            , color (hex "#aaa")
-            ]
+        [ class "datetime"
         ]
         [ text (DF.format "%Y-%m-%d %H:%M:%S" datetime)
         ]
@@ -254,25 +241,17 @@ feedItemView onClickMsg selectedId item =
                     selected == item.id
 
         titleView =
-            [ div
-                [ onClick onClickMsg ]
-                [ span
-                    [ css
-                        [ cursor pointer
-                        ]
-                    ]
-                    [ text item.title ]
+            div
+                [ onClick onClickMsg
+                , class "title"
+                , classList [ ( "selected", isSelected ) ]
                 ]
-            ]
+                [ text item.title ]
 
         detailView =
             if isSelected then
                 [ div
-                    [ css
-                        [ padding (Css.em 1)
-                        , fontSize (pct 95)
-                        ]
-                    , class "animated fadeIn"
+                    [ class "body"
                     ]
                     [ div []
                         [ datetimeView item.updated_at
@@ -280,19 +259,15 @@ feedItemView onClickMsg selectedId item =
                         ]
                     , item.description
                         |> Markdown.toHtml []
-                        |> fromUnstyled
                     ]
                 ]
             else
                 []
     in
         div
-            [ css
-                [ borderBottom3 (px 1) solid (hex "#ddd")
-                , padding2 (Css.em 0.5) zero
-                ]
+            [ class "feed-item"
             ]
-            (titleView ++ detailView)
+            (titleView :: detailView)
 
 
 feedItemsView : Maybe Feed.Feed -> Maybe FeedItem.FeedItemId -> WebData FeedItems -> Html Msg
@@ -315,19 +290,14 @@ feedItemsView selectedFeed selectedId items =
                             ]
                         ]
                     , p
-                        [ css
-                            [ fontStyle italic
-                            , fontSize (pct 80)
-                            ]
+                        [ class "desc"
                         ]
                         [ text feed.description ]
                     ]
 
         titleDiv =
             div
-                [ css
-                    [ borderBottom3 (px 1) solid (hex "#999")
-                    ]
+                [ class "feed"
                 ]
                 titleContent
 
@@ -344,132 +314,64 @@ feedItemsView selectedFeed selectedId items =
 
                 RemoteData.Success resp ->
                     div
-                        []
+                        [ class "feed-items" ]
                         [ titleDiv
-                        , resp.results
-                            |> List.map (\item -> feedItemView (SelectFeedItem item.id) selectedId item)
-                            |> div [ class "animated fadeIn" ]
+                        , div [ class "animated fadeIn" ]
+                            (resp.results
+                                |> List.map
+                                    (\item -> feedItemView (SelectFeedItem item.id) selectedId item)
+                            )
                         ]
     in
         content
 
 
-styledView : Model -> Html Msg
-styledView model =
+view : Model -> Html Msg
+view model =
     let
-        menuWidth =
-            250
-
-        widthThreshold =
-            Css.em 48
-
         menuButtonIcon =
             if model.menuActive then
                 Icons.x
             else
                 Icons.menu
-
-        menuButtonLeft =
-            if model.menuActive then
-                menuWidth
-            else
-                0
-
-        transition =
-            batch
-                [ property "transition" "all 0.2s ease-out"
-                , property "-webkit-transition" "all 0.2s ease-out"
-                , property "-moz-transition" "all 0.2s ease-out"
-                , property "-ms-transition" "all 0.2s ease-out"
-                , property "-o-transition" "all 0.2s ease-out"
-                ]
     in
         div
             -- layout
-            [ css
-                [ position relative
-                , left zero
-                , paddingLeft zero
-                , transition
-                , Media.withMedia [ Media.all [ Media.minWidth widthThreshold ] ]
-                    [ paddingLeft (px menuWidth)
-                    , left zero
-                    ]
-                , Media.withMedia [ Media.all [ Media.maxWidth widthThreshold ] ]
-                    [ left (px menuButtonLeft) ]
-                ]
+            [ id "home"
             ]
             [ a
                 -- menu button
-                [ css
-                    [ position fixed
-                    , display block
-                    , top zero
-                    , left (px menuButtonLeft)
-                    , zIndex (int 10)
-                    , height auto
-                    , transition
-                    , padding2 (Css.em 0.3) (Css.em 0.6)
-                    , Media.withMedia [ Media.all [ Media.minWidth widthThreshold ] ]
-                        [ position fixed
-                        , top zero
-                        , display none
-                        ]
-                    ]
+                [ id "menu-btn"
+                , classList [ ( "active", model.menuActive ) ]
                 , onClick ToggleMenuActive
                 ]
                 [ menuButtonIcon
-                    |> Icons.toHtmlStyled []
+                    |> Icons.toHtml []
                 ]
             , div
-                -- menu
-                [ css
-                    [ width (px menuWidth)
-                    , marginLeft (px -menuWidth)
-                    , position fixed
-                    , top zero
-                    , left (px menuWidth)
-                    , bottom zero
-                    , zIndex (int 1000)
-                    , overflowY auto
-                    , transition
-                    , Media.withMedia [ Media.all [ Media.maxWidth widthThreshold ] ]
-                        [ left (px menuButtonLeft)
-                        ]
-                    ]
+                [ classList [ ( "active", model.menuActive ) ]
+                , id "menu"
                 ]
                 [ model.feeds
                     |> feedsView (model.selectedFeed |> Maybe.map .id)
                 ]
             , div
                 -- main
-                [ css
-                    [ color (hex "#333")
-                    ]
-                ]
+                [ id "main" ]
                 [ div
-                    -- header
-                    [ css
-                        [ minHeight (Css.em 1) ]
+                    [ class "overlay"
+                    , classList [ ( "active", model.menuActive ) ]
                     ]
                     []
                 , div
-                    -- content
-                    [ css
-                        [ margin2 zero auto
-                        , padding2 zero (Css.em 2)
-                        , maxWidth (px 800)
-                        , marginBottom (px 50)
-
-                        -- , lineHeight (Css.em 1.6)
-                        ]
+                    [ id "header"
+                    ]
+                    []
+                , div
+                    [ id "content"
                     ]
                     [ model.feedItems
                         |> feedItemsView model.selectedFeed model.selectedFeedItemId
                     ]
                 ]
             ]
-
-
-view =
-    styledView >> toUnstyled

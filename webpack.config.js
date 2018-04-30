@@ -20,7 +20,8 @@ module.exports = {
         viewport: 'width=device-width, initial-scale=1'
       },
       hash: true
-    })
+    }),
+
   ],
 
   output: {
@@ -31,11 +32,26 @@ module.exports = {
   module: {
     rules: [
       {
-        test: /\.(css|scss)$/,
+        test: /\.css$/,
         use: [
           'style-loader',
           'css-loader',
-          'postcss-loader'
+        ]
+      },
+      {
+        test: /\.styl(us)?$/,
+        use: [
+          'style-loader',
+          'css-loader',
+          {
+              loader: 'postcss-loader',
+              options: {
+                  plugins: () => [
+                      require('autoprefixer')(),
+                  ],
+              }
+          },
+          'stylus-loader',
         ]
       },
       {
@@ -68,7 +84,6 @@ module.exports = {
     inline: true,
     compress: true,
     stats: { colors: true },
-    open: true,
   },
 
 
