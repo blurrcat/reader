@@ -1,10 +1,9 @@
 module Data.Feed.Item exposing (FeedItem, FeedItemId, decoder, feedItemIdDecoder, idToString)
 
-import Date exposing (Date)
-import Json.Decode as Decode exposing (Decoder, int, string)
-import Json.Decode.Extra exposing (date)
-import Json.Decode.Pipeline exposing (decode, required, optional)
 import Data.Feed exposing (FeedId, feedIdDecoder)
+import String
+import Json.Decode as Decode exposing (Decoder, int, string)
+import Json.Decode.Pipeline exposing (optional, required)
 
 
 type alias FeedItem =
@@ -12,7 +11,7 @@ type alias FeedItem =
     , title : String
     , description : String
     , link : String
-    , updated_at : Date
+    , updated_at : String
     }
 
 
@@ -22,12 +21,12 @@ type alias FeedItem =
 
 decoder : Decoder FeedItem
 decoder =
-    decode FeedItem
+    Decode.succeed FeedItem
         |> required "id" feedItemIdDecoder
         |> required "title" string
         |> optional "description" string ""
         |> required "link" string
-        |> required "updated_at" date
+        |> required "updated_at" string
 
 
 
@@ -40,7 +39,7 @@ type FeedItemId
 
 idToString : FeedItemId -> String
 idToString (FeedItemId id) =
-    toString id
+    String.fromInt id
 
 
 feedItemIdDecoder : Decoder FeedItemId

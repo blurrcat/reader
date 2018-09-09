@@ -1,29 +1,29 @@
-module Page.Home exposing (Model, Msg, init, update, view, subscriptions)
+module Page.Home exposing (Model, Msg, init, subscriptions, update, view)
 
+import Api
+import Data.Feed as Feed
+import Data.Feed.Item as FeedItem
+import Time
 import Html exposing (..)
 import Html.Attributes
     exposing
-        ( style
-        , class
+        ( class
         , classList
         , href
-        , rel
-        , title
         , id
+        , rel
+        , style
         , target
+        , title
         )
 import Html.Events exposing (onClick)
-import RemoteData exposing (WebData)
-import Json.Decode as Decode
-import Data.Feed as Feed
-import Data.Feed.Item as FeedItem
 import Http
 import HttpBuilder
-import Api
-import Markdown
-import Date
-import Date.Format as DF
 import Icons
+import Json.Decode as Decode
+import Markdown
+import RemoteData exposing (WebData)
+import String
 
 
 type alias Feeds =
@@ -46,7 +46,7 @@ type alias Model =
 getFeeds page =
     "/feeds/"
         |> Api.list
-            [ ( "page", toString page ) ]
+            [ ( "page", String.fromInt page ) ]
             Feed.decoder
         |> RemoteData.sendRequest
         |> Cmd.map FeedsResponse
@@ -55,7 +55,7 @@ getFeeds page =
 getFeedItems page feedId =
     "/feed-items/"
         |> Api.list
-            [ ( "page", toString page )
+            [ ( "page", String.fromInt page )
             , ( "feed_id"
               , feedId
                     |> Maybe.map Feed.idToString
@@ -67,17 +67,19 @@ getFeedItems page feedId =
         |> Cmd.map FeedItemsResponse
 
 
-init : ( Model, Cmd Msg )
-init =
-    { feeds = RemoteData.Loading
-    , feedItems = RemoteData.Loading
-    , selectedFeed = Nothing
-    , selectedFeedItemId = Nothing
-    , menuActive = False
-    }
-        ! [ getFeeds 1
-          , getFeedItems 1 Nothing
-          ]
+init : () -> ( Model, Cmd Msg )
+init _ =
+    ( { feeds = RemoteData.Loading
+      , feedItems = RemoteData.Loading
+      , selectedFeed = Nothing
+      , selectedFeedItemId = Nothing
+      , menuActive = False
+      }
+    , Cmd.batch
+        [ getFeeds 1
+        , getFeedItems 1 Nothing
+        ]
+    )
 
 
 type Msg
@@ -93,16 +95,24 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         Noop ->
-            model ! []
+            ( model
+            , Cmd.none
+            )
 
         ToggleMenuActive ->
-            { model | menuActive = (not model.menuActive) } ! []
+            ( { model | menuActive = not model.menuActive }
+            , Cmd.none
+            )
 
         FeedsResponse resp ->
-            { model | feeds = resp } ! []
+            ( { model | feeds = resp }
+            , Cmd.none
+            )
 
         FeedItemsResponse resp ->
-            { model | feedItems = resp } ! []
+            ( { model | feedItems = resp }
+            , Cmd.none
+            )
 
         SelectFeed feedId ->
             let
@@ -116,12 +126,13 @@ update msg model =
                                     |> List.head
                             )
             in
-                { model
+                ( { model
                     | selectedFeed = selectedFeed
                     , menuActive = False
                     , feedItems = RemoteData.Loading
-                }
-                    ! [ getFeedItems 1 (Just feedId) ]
+                  }
+                , getFeedItems 1 (Just feedId)
+                )
 
         SelectFeedItem feedItemId ->
             let
@@ -136,7 +147,9 @@ update msg model =
                             else
                                 Just feedItemId
             in
-                { model | selectedFeedItemId = newSelectedId } ! []
+                ( { model | selectedFeedItemId = newSelectedId }
+                , Cmd.none
+                )
 
 
 subscriptions : Model -> Sub Msg
@@ -161,10 +174,8 @@ feedView onClickMsg selectedFeedId feed =
             [ href "#"
             , title feed.title
             , class "pure-menu-link"
-            , style
-                [ ( "overflow", "hidden" )
-                , ( "text-overflow", "ellipsis" )
-                ]
+            , style "overflow" "hidden"
+            , style "text-overflow" "ellipsis"
             ]
             [ text feed.title ]
         ]
@@ -182,7 +193,7 @@ feedsView selectedFeedId feeds =
                     loadingView
 
                 RemoteData.Failure err ->
-                    text ("Error: " ++ toString err)
+                    text "Network Error"
 
                 RemoteData.Success resp ->
                     resp.results
@@ -220,12 +231,12 @@ linkIconView icon url =
         ]
 
 
-datetimeView : Date.Date -> Html msg
+datetimeView : String -> Html msg
 datetimeView datetime =
     span
         [ class "datetime"
         ]
-        [ text (DF.format "%Y-%m-%d %H:%M:%S" datetime)
+        [ text datetime
         ]
 
 
@@ -310,7 +321,7 @@ feedItemsView selectedFeed selectedId items =
                     loadingView
 
                 RemoteData.Failure err ->
-                    text ("Error: " ++ toString err)
+                    text "Network Error"
 
                 RemoteData.Success resp ->
                     div

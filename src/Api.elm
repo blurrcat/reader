@@ -1,15 +1,15 @@
-module Api exposing (url, get, list, ListResponse, listDecoder)
+module Api exposing (ListResponse, get, list, listDecoder, url)
 
 import Http
-import Json.Decode as Decode exposing (Decoder, int, string, nullable)
-import Json.Decode.Pipeline exposing (decode, required, requiredAt)
 import HttpBuilder
     exposing
-        ( withHeader
-        , withQueryParams
+        ( toRequest
         , withExpectJson
-        , toRequest
+        , withHeader
+        , withQueryParams
         )
+import Json.Decode as Decode exposing (Decoder, int, nullable, string)
+import Json.Decode.Pipeline exposing (required, requiredAt)
 
 
 type alias ListResponse a =
@@ -22,7 +22,7 @@ type alias ListResponse a =
 
 listDecoder : Decoder a -> Decoder (ListResponse a)
 listDecoder itemDecoder =
-    decode ListResponse
+    Decode.succeed ListResponse
         |> required "count" int
         |> required "next" (nullable int)
         |> required "previous" (nullable int)
