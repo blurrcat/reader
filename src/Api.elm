@@ -1,4 +1,11 @@
-module Api exposing (ListResponse, get, list, listDecoder, url)
+module Api
+    exposing
+        ( ListResponse
+        , FeedsResponse
+        , FeedItemsResponse
+        , listFeedsRequest
+        , listFeedItemsRequest
+        )
 
 import Http
 import HttpBuilder
@@ -8,8 +15,11 @@ import HttpBuilder
         , withHeader
         , withQueryParams
         )
+import RemoteData exposing (WebData)
 import Json.Decode as Decode exposing (Decoder, int, nullable, string)
 import Json.Decode.Pipeline exposing (required, requiredAt)
+import Data.Feed as Feed
+import Data.Feed.Item as FeedItem
 
 
 type alias ListResponse a =
@@ -51,3 +61,37 @@ get params decoder endpoint =
 list : List ( String, String ) -> Decoder a -> String -> Http.Request (ListResponse a)
 list params decoder endpoint =
     get params (listDecoder decoder) endpoint
+
+
+type alias FeedsResponse =
+    WebData (ListResponse Feed.Feed)
+
+
+type alias FeedItemsResponse =
+    WebData (ListResponse FeedItem.FeedItem)
+
+
+listFeedsRequest : Int -> (FeedsResponse -> a) -> Cmd a
+listFeedsRequest page msg =
+    "/feeds/"
+        |> list
+            [ ( "page", String.fromInt page ) ]
+            Feed.decoder
+        |> RemoteData.sendRequest
+        |> Cmd.map msg
+
+
+listFeedItemsRequest : Int -> Maybe Feed.FeedId -> (FeedItemsResponse -> a) -> Cmd a
+listFeedItemsRequest page feedId msg =
+    "/feed-items/"
+        |> list
+            [ ( "page", String.fromInt page )
+            , ( "feed_id"
+              , feedId
+                    |> Maybe.map Feed.idToString
+                    |> Maybe.withDefault ""
+              )
+            ]
+            FeedItem.decoder
+        |> RemoteData.sendRequest
+        |> Cmd.map msg

@@ -26,45 +26,13 @@ import RemoteData exposing (WebData)
 import String
 
 
-type alias Feeds =
-    Api.ListResponse Feed.Feed
-
-
-type alias FeedItems =
-    Api.ListResponse FeedItem.FeedItem
-
-
 type alias Model =
-    { feeds : WebData Feeds
-    , feedItems : WebData FeedItems
+    { feeds : Api.FeedsResponse
+    , feedItems : Api.FeedItemsResponse
     , selectedFeed : Maybe Feed.Feed
     , selectedFeedItemId : Maybe FeedItem.FeedItemId
     , menuActive : Bool
     }
-
-
-getFeeds page =
-    "/feeds/"
-        |> Api.list
-            [ ( "page", String.fromInt page ) ]
-            Feed.decoder
-        |> RemoteData.sendRequest
-        |> Cmd.map FeedsResponse
-
-
-getFeedItems page feedId =
-    "/feed-items/"
-        |> Api.list
-            [ ( "page", String.fromInt page )
-            , ( "feed_id"
-              , feedId
-                    |> Maybe.map Feed.idToString
-                    |> Maybe.withDefault ""
-              )
-            ]
-            FeedItem.decoder
-        |> RemoteData.sendRequest
-        |> Cmd.map FeedItemsResponse
 
 
 init : () -> ( Model, Cmd Msg )
@@ -76,16 +44,16 @@ init _ =
       , menuActive = False
       }
     , Cmd.batch
-        [ getFeeds 1
-        , getFeedItems 1 Nothing
+        [ Api.listFeedsRequest 1 FeedsResponse
+        , Api.listFeedItemsRequest 1 Nothing FeedItemsResponse
         ]
     )
 
 
 type Msg
     = Noop
-    | FeedsResponse (WebData Feeds)
-    | FeedItemsResponse (WebData FeedItems)
+    | FeedsResponse Api.FeedsResponse
+    | FeedItemsResponse Api.FeedItemsResponse
     | SelectFeed Feed.FeedId
     | SelectFeedItem FeedItem.FeedItemId
     | ToggleMenuActive
@@ -131,7 +99,7 @@ update msg model =
                     , menuActive = False
                     , feedItems = RemoteData.Loading
                   }
-                , getFeedItems 1 (Just feedId)
+                , Api.listFeedItemsRequest 1 (Just feedId) FeedItemsResponse
                 )
 
         SelectFeedItem feedItemId ->
@@ -181,7 +149,7 @@ feedView onClickMsg selectedFeedId feed =
         ]
 
 
-feedsView : Maybe Feed.FeedId -> WebData Feeds -> Html Msg
+feedsView : Maybe Feed.FeedId -> Api.FeedsResponse -> Html Msg
 feedsView selectedFeedId feeds =
     let
         content =
@@ -290,7 +258,7 @@ feedItemView onClickMsg selectedId item =
             (titleView :: detailView)
 
 
-feedItemsView : Maybe Feed.Feed -> Maybe FeedItem.FeedItemId -> WebData FeedItems -> Html Msg
+feedItemsView : Maybe Feed.Feed -> Maybe FeedItem.FeedItemId -> Api.FeedItemsResponse -> Html Msg
 feedItemsView selectedFeed selectedId items =
     let
         titleContent =
