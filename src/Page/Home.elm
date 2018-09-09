@@ -240,6 +240,15 @@ datetimeView datetime =
         ]
 
 
+markdownOptions : Markdown.Options
+markdownOptions =
+    let
+        defaultOptions =
+            Markdown.defaultOptions
+    in
+        { defaultOptions | sanitize = False }
+
+
 feedItemView : Msg -> Maybe FeedItem.FeedItemId -> FeedItem.FeedItem -> Html Msg
 feedItemView onClickMsg selectedId item =
     let
@@ -269,7 +278,7 @@ feedItemView onClickMsg selectedId item =
                         , linkIconView Icons.externalLink (Just item.link)
                         ]
                     , item.description
-                        |> Markdown.toHtml []
+                        |> Markdown.toHtmlWith markdownOptions []
                     ]
                 ]
             else
