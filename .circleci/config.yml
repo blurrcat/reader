@@ -2,14 +2,14 @@ version: 2
 jobs:
   build:
     docker:
-      - image: totallymoney/circleci-elm-compile
+      - image: blurrcat/docker-elm-build:0.19
     working_directory: ~/reader
     steps:
       - checkout
       - restore_cache:
           keys:
             - node-v1-{{ checksum "package.json" }}
-            - elm-v1-{{ checksum "elm-package.json" }}
+            - elm-19-{{ checksum "elm.json" }}
       - run: |
           npm install
       - run: |
@@ -19,7 +19,7 @@ jobs:
           paths:
             - "./node_modules"
       - save_cache:
-          key: elm-v1-{{ checksum "elm-package.json" }}
+          key: elm-19-{{ checksum "elm.json" }}
           paths:
             - "./elm-stuff"
       - deploy:
