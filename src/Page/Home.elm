@@ -32,7 +32,6 @@ type alias Model =
     , selectedFeed : Maybe Feed.Feed
     , selectedFeedItemId : Maybe FeedItem.FeedItemId
     , menuActive : Bool
-    , currentPage : Int
     }
 
 
@@ -43,7 +42,6 @@ init _ =
       , selectedFeed = Nothing
       , selectedFeedItemId = Nothing
       , menuActive = False
-      , currentPage = 1
       }
     , Cmd.batch
         [ Api.listFeedsRequest 1 FeedsResponse
@@ -95,7 +93,11 @@ update msg model =
                     model.selectedFeed
                         |> Maybe.map .id
             in
-                ( { model | feedItems = RemoteData.Loading }, Api.listFeedItemsRequest page feedId FeedItemsResponse )
+                ( { model
+                    | feedItems = RemoteData.Loading
+                  }
+                , Api.listFeedItemsRequest page feedId FeedItemsResponse
+                )
 
         SelectFeed feedId ->
             let
@@ -103,10 +105,9 @@ update msg model =
                     model.feeds
                         |> RemoteData.toMaybe
                         |> Maybe.andThen
-                            (\resp ->
-                                resp.results
-                                    |> List.filter (\f -> f.id == feedId)
-                                    |> List.head
+                            (.results
+                                >> List.filter (\f -> f.id == feedId)
+                                >> List.head
                             )
             in
                 ( { model

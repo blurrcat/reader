@@ -31,6 +31,10 @@ type alias ListResponse a =
     }
 
 
+type alias WebDataListResponse a =
+    WebData (ListResponse a)
+
+
 currentPage : ListResponse a -> Int
 currentPage resp =
     case resp.next of
@@ -60,8 +64,8 @@ url str =
     "https://air-api.blurrcat.net" ++ str
 
 
-get : List ( String, String ) -> Decoder a -> String -> Http.Request a
-get params decoder endpoint =
+httpGet : List ( String, String ) -> Decoder a -> String -> Http.Request a
+httpGet params decoder endpoint =
     url endpoint
         |> HttpBuilder.get
         |> withHeader "Accept" "application/json"
@@ -70,9 +74,11 @@ get params decoder endpoint =
         |> toRequest
 
 
-list : List ( String, String ) -> Decoder a -> String -> Http.Request (ListResponse a)
-list params decoder endpoint =
-    get params (listDecoder decoder) endpoint
+list : List ( String, String ) -> Decoder a -> (WebDataListResponse a -> b) -> String -> Cmd b
+list params decoder msg endpoint =
+    httpGet params (listDecoder decoder) endpoint
+        |> RemoteData.sendRequest
+        |> Cmd.map msg
 
 
 type alias FeedsResponse =
@@ -89,8 +95,7 @@ listFeedsRequest page msg =
         |> list
             [ ( "page", String.fromInt page ) ]
             Feed.decoder
-        |> RemoteData.sendRequest
-        |> Cmd.map msg
+            msg
 
 
 listFeedItemsRequest : Int -> Maybe Feed.FeedId -> (FeedItemsResponse -> a) -> Cmd a
@@ -105,5 +110,4 @@ listFeedItemsRequest page feedId msg =
               )
             ]
             FeedItem.decoder
-        |> RemoteData.sendRequest
-        |> Cmd.map msg
+            msg
