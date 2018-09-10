@@ -3,6 +3,7 @@ module Api
         ( ListResponse
         , FeedsResponse
         , FeedItemsResponse
+        , currentPage
         , listFeedsRequest
         , listFeedItemsRequest
         )
@@ -30,6 +31,21 @@ type alias ListResponse a =
     }
 
 
+currentPage : ListResponse a -> Int
+currentPage resp =
+    case resp.next of
+        Just next ->
+            next - 1
+
+        Nothing ->
+            case resp.previous of
+                Just prev ->
+                    prev + 1
+
+                Nothing ->
+                    0
+
+
 listDecoder : Decoder a -> Decoder (ListResponse a)
 listDecoder itemDecoder =
     Decode.succeed ListResponse
@@ -42,10 +58,6 @@ listDecoder itemDecoder =
 url : String -> String
 url str =
     "https://air-api.blurrcat.net" ++ str
-
-
-
--- "http://localhost:8000" ++ str
 
 
 get : List ( String, String ) -> Decoder a -> String -> Http.Request a
