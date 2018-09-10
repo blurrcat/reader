@@ -1,4 +1,12 @@
-module Api exposing (ListResponse, get, list, listDecoder, url)
+module Api
+    exposing
+        ( ListResponse
+        , FeedsResponse
+        , FeedItemsResponse
+        , currentPage
+        , listFeedsRequest
+        , listFeedItemsRequest
+        )
 
 import Http
 import HttpBuilder
@@ -8,8 +16,11 @@ import HttpBuilder
         , withHeader
         , withQueryParams
         )
+import RemoteData exposing (WebData)
 import Json.Decode as Decode exposing (Decoder, int, nullable, string)
 import Json.Decode.Pipeline exposing (required, requiredAt)
+import Data.Feed as Feed
+import Data.Feed.Item as FeedItem
 
 
 type alias ListResponse a =
@@ -18,6 +29,21 @@ type alias ListResponse a =
     , previous : Maybe Int
     , results : List a
     }
+
+
+currentPage : ListResponse a -> Int
+currentPage resp =
+    case resp.next of
+        Just next ->
+            next - 1
+
+        Nothing ->
+            case resp.previous of
+                Just prev ->
+                    prev + 1
+
+                Nothing ->
+                    0
 
 
 listDecoder : Decoder a -> Decoder (ListResponse a)
@@ -34,10 +60,6 @@ url str =
     "https://air-api.blurrcat.net" ++ str
 
 
-
--- "http://localhost:8000" ++ str
-
-
 get : List ( String, String ) -> Decoder a -> String -> Http.Request a
 get params decoder endpoint =
     url endpoint
@@ -51,3 +73,37 @@ get params decoder endpoint =
 list : List ( String, String ) -> Decoder a -> String -> Http.Request (ListResponse a)
 list params decoder endpoint =
     get params (listDecoder decoder) endpoint
+
+
+type alias FeedsResponse =
+    WebData (ListResponse Feed.Feed)
+
+
+type alias FeedItemsResponse =
+    WebData (ListResponse FeedItem.FeedItem)
+
+
+listFeedsRequest : Int -> (FeedsResponse -> a) -> Cmd a
+listFeedsRequest page msg =
+    "/feeds/"
+        |> list
+            [ ( "page", String.fromInt page ) ]
+            Feed.decoder
+        |> RemoteData.sendRequest
+        |> Cmd.map msg
+
+
+listFeedItemsRequest : Int -> Maybe Feed.FeedId -> (FeedItemsResponse -> a) -> Cmd a
+listFeedItemsRequest page feedId msg =
+    "/feed-items/"
+        |> list
+            [ ( "page", String.fromInt page )
+            , ( "feed_id"
+              , feedId
+                    |> Maybe.map Feed.idToString
+                    |> Maybe.withDefault ""
+              )
+            ]
+            FeedItem.decoder
+        |> RemoteData.sendRequest
+        |> Cmd.map msg

@@ -26,45 +26,14 @@ import RemoteData exposing (WebData)
 import String
 
 
-type alias Feeds =
-    Api.ListResponse Feed.Feed
-
-
-type alias FeedItems =
-    Api.ListResponse FeedItem.FeedItem
-
-
 type alias Model =
-    { feeds : WebData Feeds
-    , feedItems : WebData FeedItems
+    { feeds : Api.FeedsResponse
+    , feedItems : Api.FeedItemsResponse
     , selectedFeed : Maybe Feed.Feed
     , selectedFeedItemId : Maybe FeedItem.FeedItemId
     , menuActive : Bool
+    , currentPage : Int
     }
-
-
-getFeeds page =
-    "/feeds/"
-        |> Api.list
-            [ ( "page", String.fromInt page ) ]
-            Feed.decoder
-        |> RemoteData.sendRequest
-        |> Cmd.map FeedsResponse
-
-
-getFeedItems page feedId =
-    "/feed-items/"
-        |> Api.list
-            [ ( "page", String.fromInt page )
-            , ( "feed_id"
-              , feedId
-                    |> Maybe.map Feed.idToString
-                    |> Maybe.withDefault ""
-              )
-            ]
-            FeedItem.decoder
-        |> RemoteData.sendRequest
-        |> Cmd.map FeedItemsResponse
 
 
 init : () -> ( Model, Cmd Msg )
@@ -74,18 +43,20 @@ init _ =
       , selectedFeed = Nothing
       , selectedFeedItemId = Nothing
       , menuActive = False
+      , currentPage = 1
       }
     , Cmd.batch
-        [ getFeeds 1
-        , getFeedItems 1 Nothing
+        [ Api.listFeedsRequest 1 FeedsResponse
+        , Api.listFeedItemsRequest 1 Nothing FeedItemsResponse
         ]
     )
 
 
 type Msg
     = Noop
-    | FeedsResponse (WebData Feeds)
-    | FeedItemsResponse (WebData FeedItems)
+    | FeedsResponse Api.FeedsResponse
+    | FeedItemsResponse Api.FeedItemsResponse
+    | LoadMoreItems (Maybe Int)
     | SelectFeed Feed.FeedId
     | SelectFeedItem FeedItem.FeedItemId
     | ToggleMenuActive
@@ -114,6 +85,18 @@ update msg model =
             , Cmd.none
             )
 
+        LoadMoreItems maybePage ->
+            let
+                page =
+                    maybePage
+                        |> Maybe.withDefault 1
+
+                feedId =
+                    model.selectedFeed
+                        |> Maybe.map .id
+            in
+                ( { model | feedItems = RemoteData.Loading }, Api.listFeedItemsRequest page feedId FeedItemsResponse )
+
         SelectFeed feedId ->
             let
                 selectedFeed =
@@ -131,7 +114,7 @@ update msg model =
                     , menuActive = False
                     , feedItems = RemoteData.Loading
                   }
-                , getFeedItems 1 (Just feedId)
+                , Api.listFeedItemsRequest 1 (Just feedId) FeedItemsResponse
                 )
 
         SelectFeedItem feedItemId ->
@@ -181,7 +164,7 @@ feedView onClickMsg selectedFeedId feed =
         ]
 
 
-feedsView : Maybe Feed.FeedId -> WebData Feeds -> Html Msg
+feedsView : Maybe Feed.FeedId -> Api.FeedsResponse -> Html Msg
 feedsView selectedFeedId feeds =
     let
         content =
@@ -290,7 +273,19 @@ feedItemView onClickMsg selectedId item =
             (titleView :: detailView)
 
 
-feedItemsView : Maybe Feed.Feed -> Maybe FeedItem.FeedItemId -> WebData FeedItems -> Html Msg
+paginationButtonView : String -> Maybe Int -> Html Msg
+paginationButtonView buttonText maybePage =
+    button
+        [ class "loadButton pure-button"
+        , classList
+            [ ( "pure-button-disabled", maybePage == Nothing )
+            ]
+        , onClick (LoadMoreItems maybePage)
+        ]
+        [ text buttonText ]
+
+
+feedItemsView : Maybe Feed.Feed -> Maybe FeedItem.FeedItemId -> Api.FeedItemsResponse -> Html Msg
 feedItemsView selectedFeed selectedId items =
     let
         titleContent =
@@ -333,15 +328,24 @@ feedItemsView selectedFeed selectedId items =
                     text "Network Error"
 
                 RemoteData.Success resp ->
-                    div
-                        [ class "feed-items" ]
-                        [ titleDiv
-                        , div [ class "animated fadeIn" ]
-                            (resp.results
-                                |> List.map
-                                    (\item -> feedItemView (SelectFeedItem item.id) selectedId item)
-                            )
-                        ]
+                    let
+                        currentPage =
+                            Api.currentPage resp
+                    in
+                        div
+                            [ class "feed-items" ]
+                            [ titleDiv
+                            , div [ class "animated fadeIn" ]
+                                (resp.results
+                                    |> List.map
+                                        (\item -> feedItemView (SelectFeedItem item.id) selectedId item)
+                                )
+                            , div [ class "pagination" ]
+                                [ paginationButtonView "Prev" resp.previous
+                                , paginationButtonView (String.fromInt currentPage) (Just currentPage)
+                                , paginationButtonView "Next" resp.next
+                                ]
+                            ]
     in
         content
 
