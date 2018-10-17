@@ -386,6 +386,7 @@ view model =
                 [ div
                     [ class "overlay"
                     , classList [ ( "active", model.menuActive ) ]
+                    , onClick ToggleMenuActive
                     ]
                     []
                 , div
