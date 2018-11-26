@@ -1,5 +1,5 @@
-import 'purecss/build/pure.css'
-import 'animate.css/animate.css'
+import '../node_modules/purecss/build/pure.css'
+import '../node_modules/animate.css/animate.css'
 import './app.styl'
 import { Elm } from './Main.elm'
 
