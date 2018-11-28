@@ -8,21 +8,21 @@ jobs:
       - checkout
       - restore_cache:
           keys:
-            - node-v1-{{ checksum "package.json" }}
-            - elm-19-{{ checksum "elm.json" }}
+            - node-{{ checksum "package.json" }}-v2
+            - elm-19-{{ checksum "elm.json" }}-v2
       - run: |
           npm install
       - run: |
           sysconfcpus -n 1 npm run build
       - save_cache:
-          key: node-v1-{{ checksum "package.json" }}
+          key: node-{{ checksum "package.json" }}-v2
           paths:
             - "./node_modules"
       - save_cache:
-          key: elm-19-{{ checksum "elm.json" }}
+          key: elm-19-{{ checksum "elm.json" }}-v2
           paths:
             - "./elm-stuff"
-            - "~/.elm"
+            - "/root/.elm"
       - deploy:
           command: |
             if [ "${CIRCLE_BRANCH}" == "master" ]; then

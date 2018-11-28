@@ -1,3 +1,4 @@
+import '../node_modules/purecss/build/base.css' // normalize.css
 import '../node_modules/purecss/build/pure.css'
 import '../node_modules/animate.css/animate.css'
 import './app.styl'

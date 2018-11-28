@@ -5,6 +5,8 @@ import Data.Feed as Feed
 import Data.Feed.Item as FeedItem
 import Time
 import Html exposing (..)
+import Html.Keyed as Keyed
+import Html.Lazy as Lazy
 import Html.Attributes
     exposing
         ( class
@@ -233,17 +235,9 @@ markdownOptions =
         { defaultOptions | sanitize = False }
 
 
-feedItemView : Msg -> Maybe FeedItem.FeedItemId -> FeedItem.FeedItem -> Html Msg
-feedItemView onClickMsg selectedId item =
+feedItemView : Msg -> Bool -> FeedItem.FeedItem -> Html Msg
+feedItemView onClickMsg isSelected item =
     let
-        isSelected =
-            case selectedId of
-                Nothing ->
-                    False
-
-                Just selected ->
-                    selected == item.id
-
         titleView =
             div
                 [ onClick onClickMsg
@@ -254,7 +248,7 @@ feedItemView onClickMsg selectedId item =
 
         detailView =
             if isSelected then
-                [ div
+                div
                     [ class "body"
                     ]
                     [ div []
@@ -264,14 +258,24 @@ feedItemView onClickMsg selectedId item =
                     , item.description
                         |> Markdown.toHtmlWith markdownOptions []
                     ]
-                ]
             else
-                []
+                text ""
     in
-        div
+        li
             [ class "feed-item"
             ]
-            (titleView :: detailView)
+            [ titleView, detailView ]
+
+
+keyedFeedItemView : Msg -> Maybe FeedItem.FeedItemId -> FeedItem.FeedItem -> ( String, Html Msg )
+keyedFeedItemView onClickMsg selectedId item =
+    let
+        isSelected =
+            selectedId
+                |> Maybe.map ((==) item.id)
+                |> Maybe.withDefault False
+    in
+        ( FeedItem.idToString item.id, Lazy.lazy3 feedItemView onClickMsg isSelected item )
 
 
 paginationButtonView : String -> Maybe Int -> Html Msg
@@ -336,10 +340,12 @@ feedItemsView selectedFeed selectedId items =
                         div
                             [ class "feed-items" ]
                             [ titleDiv
-                            , div [ class "animated fadeIn" ]
+                            , Keyed.ol
+                                [ class "animated fadeIn"
+                                ]
                                 (resp.results
                                     |> List.map
-                                        (\item -> feedItemView (SelectFeedItem item.id) selectedId item)
+                                        (\item -> keyedFeedItemView (SelectFeedItem item.id) selectedId item)
                                 )
                             , div [ class "pagination" ]
                                 [ paginationButtonView "Prev" resp.previous
@@ -378,7 +384,7 @@ view model =
                 , id "menu"
                 ]
                 [ model.feeds
-                    |> feedsView (model.selectedFeed |> Maybe.map .id)
+                    |> Lazy.lazy2 feedsView (model.selectedFeed |> Maybe.map .id)
                 ]
             , div
                 -- main
@@ -397,7 +403,7 @@ view model =
                     [ id "content"
                     ]
                     [ model.feedItems
-                        |> feedItemsView model.selectedFeed model.selectedFeedItemId
+                        |> Lazy.lazy3 feedItemsView model.selectedFeed model.selectedFeedItemId
                     ]
                 ]
             ]
