@@ -4,7 +4,6 @@ import Api
 import Browser.Dom as Dom
 import Data.Feed as Feed
 import Data.Feed.Item as FeedItem
-import Time
 import Html exposing (..)
 import Html.Keyed as Keyed
 import Html.Lazy as Lazy
@@ -59,7 +58,7 @@ type Msg
     | FeedsResponse Api.FeedsResponse
     | FeedItemsResponse Api.FeedItemsResponse
     | LoadMoreItems (Maybe Int)
-    | SelectFeed Feed.FeedId
+    | SelectFeed (Maybe Feed.FeedId)
     | SelectFeedItem FeedItem.FeedItemId
     | ToggleMenuActive
 
@@ -103,23 +102,29 @@ update msg model =
                 , Api.listFeedItemsRequest page feedId FeedItemsResponse
                 )
 
-        SelectFeed feedId ->
+        SelectFeed maybeFeedId ->
             let
                 selectedFeed =
-                    model.feeds
-                        |> RemoteData.toMaybe
-                        |> Maybe.andThen
-                            (.results
-                                >> List.filter (\f -> f.id == feedId)
-                                >> List.head
-                            )
+                    case maybeFeedId of
+                        Just feedId ->
+                            model.feeds
+                                |> RemoteData.toMaybe
+                                |> Maybe.andThen
+                                    (.results
+                                        >> List.filter (\f -> f.id == feedId)
+                                        >> List.head
+                                    )
+
+                        Nothing ->
+                            Nothing
             in
                 ( { model
                     | selectedFeed = selectedFeed
+                    , selectedFeedItemId = Nothing
                     , menuActive = False
                     , feedItems = RemoteData.Loading
                   }
-                , Api.listFeedItemsRequest 1 (Just feedId) FeedItemsResponse
+                , Api.listFeedItemsRequest 1 maybeFeedId FeedItemsResponse
                 )
 
         SelectFeedItem feedItemId ->
@@ -161,27 +166,25 @@ jumpTo itemId =
         |> Task.attempt (\_ -> Noop)
 
 
-feedView : Msg -> Maybe Feed.FeedId -> Feed.Feed -> Html Msg
-feedView onClickMsg selectedFeedId feed =
+feedView : Maybe Feed.FeedId -> Maybe Feed.FeedId -> String -> Html Msg
+feedView selectedFeedId feedId feedTitle =
     li
         [ class "pure-menu-item"
         , classList
             [ ( "pure-menu-selected"
-              , selectedFeedId
-                    |> Maybe.map ((==) feed.id)
-                    |> (==) (Just True)
+              , selectedFeedId == feedId
               )
             ]
-        , onClick onClickMsg
+        , onClick (SelectFeed feedId)
         ]
         [ a
             [ href "#"
-            , title feed.title
+            , title feedTitle
             , class "pure-menu-link"
             , style "overflow" "hidden"
             , style "text-overflow" "ellipsis"
             ]
-            [ text feed.title ]
+            [ text feedTitle ]
         ]
 
 
@@ -200,9 +203,15 @@ feedsView selectedFeedId feeds =
                     text "Network Error"
 
                 RemoteData.Success resp ->
-                    resp.results
-                        |> List.map (\f -> feedView (SelectFeed f.id) selectedFeedId f)
-                        |> ul [ class "pure-menu-list" ]
+                    let
+                        latestLink =
+                            feedView Nothing Nothing "Latest"
+
+                        feedLinks =
+                            resp.results
+                                |> List.map (\f -> feedView selectedFeedId (Just f.id) f.title)
+                    in
+                        ul [ class "pure-menu-list" ] (latestLink :: feedLinks)
     in
         div
             [ class "pure-menu" ]
@@ -344,41 +353,38 @@ feedItemsView selectedFeed selectedId items =
                 [ class "feed"
                 ]
                 titleContent
-
-        content =
-            case items of
-                RemoteData.NotAsked ->
-                    text ""
-
-                RemoteData.Loading ->
-                    loadingView
-
-                RemoteData.Failure err ->
-                    text "Network Error"
-
-                RemoteData.Success resp ->
-                    let
-                        currentPage =
-                            Api.currentPage resp
-                    in
-                        div
-                            [ class "feed-items" ]
-                            [ titleDiv
-                            , Keyed.ol
-                                [ class "animated fadeIn"
-                                ]
-                                (resp.results
-                                    |> List.map
-                                        (\item -> keyedFeedItemView (SelectFeedItem item.id) selectedId item)
-                                )
-                            , div [ class "pagination" ]
-                                [ paginationButtonView "Prev" resp.previous
-                                , paginationButtonView (String.fromInt currentPage) (Just currentPage)
-                                , paginationButtonView "Next" resp.next
-                                ]
-                            ]
     in
-        content
+        case items of
+            RemoteData.NotAsked ->
+                text ""
+
+            RemoteData.Loading ->
+                loadingView
+
+            RemoteData.Failure err ->
+                text "Network Error"
+
+            RemoteData.Success resp ->
+                let
+                    currentPage =
+                        Api.currentPage resp
+                in
+                    div
+                        [ class "feed-items" ]
+                        [ titleDiv
+                        , Keyed.ol
+                            [ class "animated fadeIn"
+                            ]
+                            (resp.results
+                                |> List.map
+                                    (\item -> keyedFeedItemView (SelectFeedItem item.id) selectedId item)
+                            )
+                        , div [ class "pagination" ]
+                            [ paginationButtonView "Prev" resp.previous
+                            , paginationButtonView (String.fromInt currentPage) (Just currentPage)
+                            , paginationButtonView "Next" resp.next
+                            ]
+                        ]
 
 
 view : Model -> Html Msg
