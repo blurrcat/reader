@@ -288,7 +288,7 @@ feedItemView onClickMsg isSelected item =
                         , linkIconView Icons.externalLink (Just item.link)
                         ]
                     , item.description
-                        |> Markdown.toHtmlWith markdownOptions []
+                        |> Markdown.toHtmlWith markdownOptions [ class "md" ]
                     ]
             else
                 text ""
