@@ -1,6 +1,7 @@
 module Page.Home exposing (Model, Msg, init, subscriptions, update, view)
 
 import Api
+import Browser.Dom as Dom
 import Data.Feed as Feed
 import Data.Feed.Item as FeedItem
 import Time
@@ -26,6 +27,7 @@ import Json.Decode as Decode
 import Markdown
 import RemoteData exposing (WebData)
 import String
+import Task
 
 
 type alias Model =
@@ -132,15 +134,31 @@ update msg model =
                                 Nothing
                             else
                                 Just feedItemId
+
+                cmd =
+                    case newSelectedId of
+                        Nothing ->
+                            Cmd.none
+
+                        Just id ->
+                            jumpTo id
             in
                 ( { model | selectedFeedItemId = newSelectedId }
-                , Cmd.none
+                , cmd
                 )
 
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
     Sub.none
+
+
+jumpTo : FeedItem.FeedItemId -> Cmd Msg
+jumpTo itemId =
+    Dom.getElement (feedItemElementId itemId)
+        |> Task.andThen
+            (\info -> Dom.setViewport info.viewport.x info.element.y)
+        |> Task.attempt (\_ -> Noop)
 
 
 feedView : Msg -> Maybe Feed.FeedId -> Feed.Feed -> Html Msg
@@ -235,6 +253,11 @@ markdownOptions =
         { defaultOptions | sanitize = False }
 
 
+feedItemElementId : FeedItem.FeedItemId -> String
+feedItemElementId itemId =
+    "item-" ++ FeedItem.idToString itemId
+
+
 feedItemView : Msg -> Bool -> FeedItem.FeedItem -> Html Msg
 feedItemView onClickMsg isSelected item =
     let
@@ -263,6 +286,7 @@ feedItemView onClickMsg isSelected item =
     in
         li
             [ class "feed-item"
+            , id (feedItemElementId item.id)
             ]
             [ titleView, detailView ]
 
