@@ -2,8 +2,8 @@ module Page.Home exposing (Model, Msg, init, subscriptions, update, view)
 
 import Api
 import Browser.Dom as Dom
-import Data.Feed as Feed
-import Data.Feed.Item as FeedItem
+import Data.Feed as Feed exposing (Feed)
+import Data.Feed.Item as FeedItem exposing (FeedItem)
 import Html exposing (..)
 import Html.Keyed as Keyed
 import Html.Lazy as Lazy
@@ -20,7 +20,7 @@ import Html.Attributes
         )
 import Html.Events exposing (onClick)
 import Http
-import HttpBuilder
+import PaginatedList exposing (PaginatedList)
 import Icons
 import Json.Decode as Decode
 import Markdown
@@ -30,9 +30,9 @@ import Task
 
 
 type alias Model =
-    { feeds : Api.FeedsResponse
-    , feedItems : Api.FeedItemsResponse
-    , selectedFeed : Maybe Feed.Feed
+    { feeds : WebData Feed.Paginated
+    , feedItems : WebData FeedItem.Paginated
+    , selectedFeed : Maybe Feed
     , selectedFeedItemId : Maybe FeedItem.FeedItemId
     , menuActive : Bool
     }
@@ -47,16 +47,21 @@ init _ =
       , menuActive = False
       }
     , Cmd.batch
-        [ Api.listFeedsRequest 1 FeedsResponse
-        , Api.listFeedItemsRequest 1 Nothing FeedItemsResponse
+        [ Feed.list
+            (PaginatedList.params { page = 1, perPage = 20 })
+            FeedsResponse
+        , FeedItem.list
+            (PaginatedList.params { page = 1, perPage = 20 })
+            Nothing
+            FeedItemsResponse
         ]
     )
 
 
 type Msg
     = Noop
-    | FeedsResponse Api.FeedsResponse
-    | FeedItemsResponse Api.FeedItemsResponse
+    | FeedsResponse (Result Http.Error Feed.Paginated)
+    | FeedItemsResponse (Result Http.Error FeedItem.Paginated)
     | LoadMoreItems (Maybe Int)
     | SelectFeed (Maybe Feed.FeedId)
     | SelectFeedItem FeedItem.FeedItemId
@@ -77,12 +82,12 @@ update msg model =
             )
 
         FeedsResponse resp ->
-            ( { model | feeds = resp }
+            ( { model | feeds = RemoteData.fromResult resp }
             , Cmd.none
             )
 
         FeedItemsResponse resp ->
-            ( { model | feedItems = resp }
+            ( { model | feedItems = RemoteData.fromResult resp }
             , Cmd.none
             )
 
@@ -99,7 +104,10 @@ update msg model =
                 ( { model
                     | feedItems = RemoteData.Loading
                   }
-                , Api.listFeedItemsRequest page feedId FeedItemsResponse
+                , FeedItem.list
+                    (PaginatedList.params { page = page, perPage = 20 })
+                    feedId
+                    FeedItemsResponse
                 )
 
         SelectFeed maybeFeedId ->
@@ -124,21 +132,19 @@ update msg model =
                     , menuActive = False
                     , feedItems = RemoteData.Loading
                   }
-                , Api.listFeedItemsRequest 1 maybeFeedId FeedItemsResponse
+                , FeedItem.list
+                    (PaginatedList.params { page = 1, perPage = 20 })
+                    maybeFeedId
+                    FeedItemsResponse
                 )
 
         SelectFeedItem feedItemId ->
             let
                 newSelectedId =
-                    case model.selectedFeedItemId of
-                        Nothing ->
-                            Just feedItemId
-
-                        Just currentId ->
-                            if currentId == feedItemId then
-                                Nothing
-                            else
-                                Just feedItemId
+                    if model.selectedFeedItemId == Just feedItemId then
+                        Nothing
+                    else
+                        Just feedItemId
 
                 cmd =
                     case newSelectedId of
@@ -188,7 +194,7 @@ feedView selectedFeedId feedId feedTitle =
         ]
 
 
-feedsView : Maybe Feed.FeedId -> Api.FeedsResponse -> Html Msg
+feedsView : Maybe Feed.FeedId -> WebData Feed.Paginated -> Html Msg
 feedsView selectedFeedId feeds =
     let
         content =
@@ -221,27 +227,28 @@ feedsView selectedFeedId feeds =
 loadingView : Html msg
 loadingView =
     div
-        [ class "animated rotateIn loading"
-        ]
-        [ Icons.loader
-            |> Icons.toHtml []
-        ]
+        [ class "animated rotateIn loading" ]
+        [ Icons.toHtml [] Icons.loader ]
 
 
 linkIconView : Icons.Icon -> Maybe String -> Html msg
-linkIconView icon url =
-    a
-        [ href (url |> Maybe.withDefault "#")
-        , target "_blank"
-        , rel "noopener noreferrer"
-        , class "link-icon"
-        , classList [ ( "hidden", url == Nothing ) ]
-        ]
-        [ icon
-            |> Icons.withSize 1
-            |> Icons.withSizeUnit "em"
-            |> Icons.toHtml []
-        ]
+linkIconView icon maybeUrl =
+    case maybeUrl of
+        Just url ->
+            a
+                [ href url
+                , target "_blank"
+                , rel "noopener noreferrer"
+                , class "link-icon"
+                ]
+                [ icon
+                    |> Icons.withSize 1
+                    |> Icons.withSizeUnit "em"
+                    |> Icons.toHtml []
+                ]
+
+        Nothing ->
+            text ""
 
 
 datetimeView : String -> Html msg
@@ -323,7 +330,7 @@ paginationButtonView buttonText maybePage =
         [ text buttonText ]
 
 
-feedItemsView : Maybe Feed.Feed -> Maybe FeedItem.FeedItemId -> Api.FeedItemsResponse -> Html Msg
+feedItemsView : Maybe Feed.Feed -> Maybe FeedItem.FeedItemId -> WebData FeedItem.Paginated -> Html Msg
 feedItemsView selectedFeed selectedId items =
     let
         titleContent =
@@ -367,7 +374,7 @@ feedItemsView selectedFeed selectedId items =
             RemoteData.Success resp ->
                 let
                     currentPage =
-                        Api.currentPage resp
+                        PaginatedList.currentPage resp
                 in
                     div
                         [ class "feed-items" ]

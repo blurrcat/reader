@@ -1,6 +1,10 @@
-module Data.Feed.Item exposing (FeedItem, FeedItemId, decoder, feedItemIdDecoder, idToString)
+module Data.Feed.Item exposing (FeedItem, FeedItemId, Paginated, decoder, feedItemIdDecoder, idToString, list)
 
-import Data.Feed exposing (FeedId, feedIdDecoder)
+import Api
+import Api.Endpoint as Endpoint
+import Url.Builder exposing (QueryParameter)
+import PaginatedList exposing (PaginatedList)
+import Data.Feed as Feed
 import String
 import Json.Decode as Decode exposing (Decoder, int, string)
 import Json.Decode.Pipeline exposing (optional, required)
@@ -45,3 +49,30 @@ idToString (FeedItemId id) =
 feedItemIdDecoder : Decoder FeedItemId
 feedItemIdDecoder =
     Decode.map FeedItemId int
+
+
+
+-- API --
+
+
+type alias Paginated =
+    PaginatedList FeedItem
+
+
+list :
+    List QueryParameter
+    -> Maybe Feed.FeedId
+    -> Api.ResultMsg Paginated msg
+    -> Cmd msg
+list params maybeFeedId msg =
+    let
+        feedIdQuery =
+            maybeFeedId
+                |> Maybe.map Feed.idToString
+                |> Maybe.withDefault ""
+                |> Url.Builder.string "feed_id"
+    in
+        Api.get
+            (Endpoint.feedItems (feedIdQuery :: params))
+            msg
+            (PaginatedList.decoder decoder)
