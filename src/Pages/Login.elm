@@ -2,6 +2,7 @@ module Pages.Login exposing (Model, Msg, init, update, subscriptions, view)
 
 import Browser
 import Html exposing (div, text)
+import Html.Attributes exposing (class, id)
 
 
 type alias Model =
@@ -33,8 +34,23 @@ view : Model -> Browser.Document Msg
 view model =
     { title = "Login"
     , body =
-        [ div []
-            [ text "login"
+        [ div
+            [ id "login-page"
+            ]
+            [ viewStaticContent []
+            , viewLoginForm [] model
             ]
         ]
     }
+
+
+viewStaticContent attrs =
+    div (attrs ++ [])
+        [ text "introduction to reader"
+        ]
+
+
+viewLoginForm attrs model =
+    div (attrs ++ [])
+        [ text "login form"
+        ]

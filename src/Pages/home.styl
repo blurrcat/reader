@@ -1,10 +1,9 @@
-#home
+@require "../constants"
+
+#home-page
   menuWidth = 250px
-  smallWidth = 35.5em
   menuTransition()
     transition: all 0.2s ease-out
-
-  color: #555
 
   .loading
     width: 100%
@@ -24,7 +23,7 @@
   #menu-btn
     display: none
 
-    @media (max-width: smallWidth)
+    @media (max-width: $smallWidth)
       display: block
       position: fixed
       top: 0
@@ -46,7 +45,7 @@
     background-color: white
 
 
-    @media (max-width: smallWidth)
+    @media (max-width: $smallWidth)
       z-index: 1000
       left: -(menuWidth)
       &.active
@@ -69,7 +68,7 @@
       // display: none
       menuTransition()
 
-    @media (max-width: smallWidth)
+    @media (max-width: $smallWidth)
       padding-left: 0
 
       .overlay.active

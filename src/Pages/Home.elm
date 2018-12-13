@@ -405,7 +405,7 @@ htmlView model =
     in
         div
             -- layout
-            [ id "home"
+            [ id "home-page"
             ]
             [ span
                 -- menu button
