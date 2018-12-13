@@ -6,5 +6,8 @@ import { Elm } from './Main.elm'
 const main = document.createElement('div')
 document.body.append(main)
 Elm.Main.init({
-  node: main
+  node: main,
+  flags: {
+    apiRoot: process.env.API_ROOT ? process.env.API_ROOT: 'http://localhost:8000'
+  }
 })

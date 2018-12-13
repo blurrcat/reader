@@ -1,6 +1,7 @@
-module Page.Home exposing (Model, Msg, init, subscriptions, update, view)
+module Pages.Home exposing (Model, Msg, init, subscriptions, update, view)
 
 import Api
+import Browser
 import Browser.Dom as Dom
 import Data.Feed as Feed exposing (Feed)
 import Data.Feed.Item as FeedItem exposing (FeedItem)
@@ -38,8 +39,8 @@ type alias Model =
     }
 
 
-init : () -> ( Model, Cmd Msg )
-init _ =
+init : ( Model, Cmd Msg )
+init =
     ( { feeds = RemoteData.Loading
       , feedItems = RemoteData.Loading
       , selectedFeed = Nothing
@@ -394,8 +395,8 @@ feedItemsView selectedFeed selectedId items =
                         ]
 
 
-view : Model -> Html Msg
-view model =
+htmlView : Model -> Html Msg
+htmlView model =
     let
         menuButtonIcon =
             if model.menuActive then
@@ -444,3 +445,10 @@ view model =
                     ]
                 ]
             ]
+
+
+view : Model -> Browser.Document Msg
+view model =
+    { title = "Reader"
+    , body = [ htmlView model ]
+    }
