@@ -5,6 +5,7 @@ import Browser.Navigation as Nav
 import Url exposing (Url)
 import Html
 import Pages.Home as Home
+import Pages.Login as Login
 import Route
 
 
@@ -30,6 +31,7 @@ type alias Flag =
 type Msg
     = Noop
     | GotHomeMsg Home.Msg
+    | GotLoginMsg Login.Msg
     | UrlClicked Browser.UrlRequest
     | UrlChanged Url
 
@@ -37,6 +39,7 @@ type Msg
 type PageModel
     = NotFound
     | Home Home.Model
+    | Login Login.Model
 
 
 type alias Model =
@@ -65,6 +68,10 @@ changeRouteTo maybeRoute model =
                 Route.Home ->
                     Home.init
                         |> updateWith Home GotHomeMsg model
+
+                Route.Login ->
+                    Login.init
+                        |> updateWith Login GotLoginMsg model
 
 
 init : Flag -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
@@ -116,6 +123,9 @@ subscriptions model =
         Home subModel ->
             Sub.map GotHomeMsg (Home.subscriptions subModel)
 
+        Login subModel ->
+            Sub.map GotLoginMsg (Login.subscriptions subModel)
+
         NotFound ->
             Sub.none
 
@@ -140,6 +150,9 @@ view model =
     case model.pageModel of
         Home subModel ->
             viewPage Home.view GotHomeMsg subModel
+
+        Login subModel ->
+            viewPage Login.view GotLoginMsg subModel
 
         NotFound ->
             { title = "404"

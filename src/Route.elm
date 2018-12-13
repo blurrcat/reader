@@ -10,12 +10,14 @@ import Url.Parser as Parser exposing ((</>), Parser, oneOf, s, string, top)
 
 type Route
     = Home
+    | Login
 
 
 parser : Parser (Route -> a) a
 parser =
     oneOf
         [ Parser.map Home top
+        , Parser.map Login (s "login")
         ]
 
 
