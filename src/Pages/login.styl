@@ -1,2 +1,19 @@
+@require "../common"
+
 #login-page
-  margin: auto 0
+  width: 100%
+  max-width: 400px
+  display: flex
+  justify-content: center
+  text-align: center
+  margin: 0 auto
+
+  #login-form
+    flex: 1
+    padding: 1em
+
+    @media (min-width: $smallWidth)
+      margin-top: .5em
+      border: 1px solid #ddd
+      border-radius: 1px
+      box-shadow: 6px 6px #ddd

@@ -2,6 +2,7 @@ module Main exposing (main)
 
 import Browser exposing (Document)
 import Browser.Navigation as Nav
+import Debug
 import Url exposing (Url)
 import Html
 import Pages.Home as Home
@@ -113,8 +114,17 @@ update msg model =
             Home.update subMsg subModel
                 |> updateWith Home GotHomeMsg model
 
-        ( _, _ ) ->
-            ( model, Cmd.none )
+        ( GotLoginMsg subMsg, Login subModel ) ->
+            Login.update subMsg subModel
+                |> updateWith Login GotLoginMsg model
+
+        ( someMsg, someModel ) ->
+            let
+                _ =
+                    Debug.log "Got unexpected message" someMsg
+            in
+                -- disgard message that arrive on the wrong page
+                ( model, Cmd.none )
 
 
 subscriptions : Model -> Sub Msg
