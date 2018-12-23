@@ -4,6 +4,10 @@ import Http
 import Url.Builder exposing (QueryParameter)
 
 
+authHeader =
+    Http.header "Authorization" "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoic2xpZGluZyIsImV4cCI6MTU0NjIxMjk1OCwianRpIjoiOWY2NTU3ZTU5YzNhNGI1MWE3Y2Q4NzQ1ZTg4ODE1NWIiLCJyZWZyZXNoX2V4cCI6MTU0ODIwMDE1OCwidXNlcl9pZCI6MX0._j9KJlVFJ7npmbMR3PpEDFLmzGQ613xbIvyzxbKy7IY"
+
+
 {-| Http.request, except it takes an Endpoint instead of a Url.
 -}
 request :
@@ -20,7 +24,7 @@ request config =
     Http.request
         { body = config.body
         , expect = config.expect
-        , headers = config.headers
+        , headers = authHeader :: config.headers
         , method = config.method
         , timeout = config.timeout
         , url = unwrap config.url
