@@ -167,10 +167,10 @@ feedView selectedFeedId feedId feedTitle =
             ]
         , onClick (SelectFeed feedId)
         ]
-        [ a
-            [ href "#"
-            , title feedTitle
+        [ span
+            [ title feedTitle
             , class "pure-menu-link"
+            , style "cursor" "pointer"
             , style "overflow" "hidden"
             , style "text-overflow" "ellipsis"
             ]
