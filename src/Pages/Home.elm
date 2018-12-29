@@ -33,7 +33,7 @@ import Task
 type alias Model =
     { feeds : WebData Feed.Paginated
     , feedItems : WebData FeedItem.Paginated
-    , selectedFeed : Maybe Feed
+    , selectedFeedId : Maybe Feed.FeedId
     , selectedFeedItemId : Maybe FeedItem.FeedItemId
     , menuActive : Bool
     }
@@ -43,7 +43,7 @@ init : ( Model, Cmd Msg )
 init =
     ( { feeds = RemoteData.Loading
       , feedItems = RemoteData.Loading
-      , selectedFeed = Nothing
+      , selectedFeedId = Nothing
       , selectedFeedItemId = Nothing
       , menuActive = False
       }
@@ -99,8 +99,7 @@ update msg model =
                         |> Maybe.withDefault 1
 
                 feedId =
-                    model.selectedFeed
-                        |> Maybe.map .id
+                    model.selectedFeedId
             in
                 ( { model
                     | feedItems = RemoteData.Loading
@@ -112,32 +111,16 @@ update msg model =
                 )
 
         SelectFeed maybeFeedId ->
-            let
-                selectedFeed =
-                    case maybeFeedId of
-                        Just feedId ->
-                            model.feeds
-                                |> RemoteData.toMaybe
-                                |> Maybe.andThen
-                                    (.results
-                                        >> List.filter (\f -> f.id == feedId)
-                                        >> List.head
-                                    )
-
-                        Nothing ->
-                            Nothing
-            in
-                ( { model
-                    | selectedFeed = selectedFeed
-                    , selectedFeedItemId = Nothing
-                    , menuActive = False
-                    , feedItems = RemoteData.Loading
-                  }
-                , FeedItem.list
-                    (PaginatedList.params { page = 1, perPage = 20 })
-                    maybeFeedId
-                    FeedItemsResponse
-                )
+            ( { model
+                | selectedFeedId = maybeFeedId
+                , menuActive = False
+                , feedItems = RemoteData.Loading
+              }
+            , FeedItem.list
+                (PaginatedList.params { page = 1, perPage = 20 })
+                maybeFeedId
+                FeedItemsResponse
+            )
 
         SelectFeedItem feedItemId ->
             let
@@ -331,11 +314,11 @@ paginationButtonView buttonText maybePage =
         [ text buttonText ]
 
 
-feedItemsView : Maybe Feed.Feed -> Maybe FeedItem.FeedItemId -> WebData FeedItem.Paginated -> Html Msg
-feedItemsView selectedFeed selectedId items =
+feedTitleView : Maybe Feed.Feed -> Html Msg
+feedTitleView maybeFeed =
     let
         titleContent =
-            case selectedFeed of
+            case maybeFeed of
                 Nothing ->
                     [ h3 [] [ text "Latest" ]
                     ]
@@ -355,12 +338,28 @@ feedItemsView selectedFeed selectedId items =
                         ]
                         [ text feed.description ]
                     ]
+    in
+        div
+            [ class "feed"
+            ]
+            titleContent
 
-        titleDiv =
-            div
-                [ class "feed"
-                ]
-                titleContent
+
+feedItemsView : Maybe Feed.FeedId -> Maybe FeedItem.FeedItemId -> WebData Feed.Paginated -> WebData FeedItem.Paginated -> Html Msg
+feedItemsView selectedFeedId selectedId feeds items =
+    let
+        getFeed feedId =
+            feeds
+                |> RemoteData.toMaybe
+                |> Maybe.andThen (.results >> List.filter (\f -> f.id == feedId) >> List.head)
+
+        selectedFeed =
+            case selectedFeedId of
+                Nothing ->
+                    Nothing
+
+                Just feedId ->
+                    getFeed feedId
     in
         case items of
             RemoteData.NotAsked ->
@@ -379,7 +378,7 @@ feedItemsView selectedFeed selectedId items =
                 in
                     div
                         [ class "feed-items" ]
-                        [ titleDiv
+                        [ Lazy.lazy feedTitleView selectedFeed
                         , Keyed.ol
                             [ class "animated fadeIn"
                             ]
@@ -422,7 +421,7 @@ htmlView model =
                 , id "menu"
                 ]
                 [ model.feeds
-                    |> Lazy.lazy2 feedsView (model.selectedFeed |> Maybe.map .id)
+                    |> Lazy.lazy2 feedsView model.selectedFeedId
                 ]
             , div
                 -- main
@@ -440,8 +439,7 @@ htmlView model =
                 , div
                     [ id "content"
                     ]
-                    [ model.feedItems
-                        |> Lazy.lazy3 feedItemsView model.selectedFeed model.selectedFeedItemId
+                    [ Lazy.lazy4 feedItemsView model.selectedFeedId model.selectedFeedItemId model.feeds model.feedItems
                     ]
                 ]
             ]
