@@ -407,7 +407,7 @@ htmlView model =
             -- layout
             [ id "home"
             ]
-            [ a
+            [ span
                 -- menu button
                 [ id "menu-btn"
                 , classList [ ( "active", model.menuActive ) ]
