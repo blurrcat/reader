@@ -5,7 +5,7 @@ import Url.Builder exposing (QueryParameter)
 
 
 authHeader =
-    Http.header "Authorization" "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoic2xpZGluZyIsImV4cCI6MTU0Njg0MTIzOCwianRpIjoiNjVjMmU4ODA1ZjdiNDJhOGJlNjZhMmUzNDZhZmEyMDEiLCJyZWZyZXNoX2V4cCI6MTU0ODgyODQzOCwidXNlcl9pZCI6MX0.tXorkM1h7P7yfXO5nvkFgo-LpfzSJ5z584Gtn9JgJyM"
+    Http.header "Authorization" "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoic2xpZGluZyIsImV4cCI6MTU0NzQxMTgyMywianRpIjoiNjVjMmU4ODA1ZjdiNDJhOGJlNjZhMmUzNDZhZmEyMDEiLCJyZWZyZXNoX2V4cCI6MTU0ODgyODQzOCwidXNlcl9pZCI6MX0.s1nvd44sxmwThNqzTJP-yd2lukbyyAmAnWiYHT0nYiw"
 
 
 {-| Http.request, except it takes an Endpoint instead of a Url.
