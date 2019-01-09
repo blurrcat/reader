@@ -1,11 +1,7 @@
-module Api.Endpoint exposing (request, Endpoint, feeds, feedItems)
+module Api.Endpoint exposing (request, Endpoint, feeds, feedItems, tokens, refreshTokens)
 
 import Http
 import Url.Builder exposing (QueryParameter)
-
-
-authHeader =
-    Http.header "Authorization" "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ0b2tlbl90eXBlIjoic2xpZGluZyIsImV4cCI6MTU0NzQxMTgyMywianRpIjoiNjVjMmU4ODA1ZjdiNDJhOGJlNjZhMmUzNDZhZmEyMDEiLCJyZWZyZXNoX2V4cCI6MTU0ODgyODQzOCwidXNlcl9pZCI6MX0.s1nvd44sxmwThNqzTJP-yd2lukbyyAmAnWiYHT0nYiw"
 
 
 {-| Http.request, except it takes an Endpoint instead of a Url.
@@ -24,7 +20,7 @@ request config =
     Http.request
         { body = config.body
         , expect = config.expect
-        , headers = authHeader :: config.headers
+        , headers = config.headers
         , method = config.method
         , timeout = config.timeout
         , url = unwrap config.url
@@ -72,11 +68,11 @@ feedItems params =
     url [ "feed-items/" ] params
 
 
-login : Endpoint
-login =
+tokens : Endpoint
+tokens =
     url [ "tokens/" ] []
 
 
-refreshToken : Endpoint
-refreshToken =
+refreshTokens : Endpoint
+refreshTokens =
     url [ "tokens", "refresh/" ] []

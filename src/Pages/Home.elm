@@ -26,7 +26,7 @@ import Icons
 import Json.Decode as Decode
 import Markdown
 import RemoteData exposing (WebData)
-import String
+import Session exposing (Session)
 import Task
 
 
@@ -36,24 +36,28 @@ type alias Model =
     , selectedFeedId : Maybe Feed.FeedId
     , selectedFeedItemId : Maybe FeedItem.FeedItemId
     , menuActive : Bool
+    , session : Session
     }
 
 
-init : ( Model, Cmd Msg )
-init =
+init : Session -> ( Model, Cmd Msg )
+init session =
     ( { feeds = RemoteData.Loading
       , feedItems = RemoteData.Loading
       , selectedFeedId = Nothing
       , selectedFeedItemId = Nothing
       , menuActive = False
+      , session = session
       }
     , Cmd.batch
         [ Feed.list
             (PaginatedList.params { page = 1, perPage = 20 })
+            (Session.cred session)
             FeedsResponse
         , FeedItem.list
             (PaginatedList.params { page = 1, perPage = 20 })
             Nothing
+            (Session.cred session)
             FeedItemsResponse
         ]
     )
@@ -67,6 +71,7 @@ type Msg
     | SelectFeed (Maybe Feed.FeedId)
     | SelectFeedItem FeedItem.FeedItemId
     | ToggleMenuActive
+    | GotSession Session
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -107,6 +112,7 @@ update msg model =
                 , FeedItem.list
                     (PaginatedList.params { page = page, perPage = 20 })
                     feedId
+                    (Session.cred model.session)
                     FeedItemsResponse
                 )
 
@@ -119,6 +125,7 @@ update msg model =
             , FeedItem.list
                 (PaginatedList.params { page = 1, perPage = 20 })
                 maybeFeedId
+                (Session.cred model.session)
                 FeedItemsResponse
             )
 
@@ -142,10 +149,13 @@ update msg model =
                 , cmd
                 )
 
+        GotSession session ->
+            ( { model | session = session }, Cmd.none )
+
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Sub.none
+    Session.changes GotSession (Session.navKey model.session)
 
 
 jumpTo : FeedItem.FeedItemId -> Cmd Msg

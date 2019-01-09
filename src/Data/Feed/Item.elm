@@ -62,9 +62,10 @@ type alias Paginated =
 list :
     List QueryParameter
     -> Maybe Feed.FeedId
-    -> Api.ResultMsg Paginated msg
+    -> Maybe Api.Cred
+    -> Api.HttpResultMsg Paginated msg
     -> Cmd msg
-list params maybeFeedId msg =
+list params maybeFeedId cred msg =
     let
         feedIdQuery =
             maybeFeedId
@@ -74,5 +75,6 @@ list params maybeFeedId msg =
     in
         Api.get
             (Endpoint.feedItems (feedIdQuery :: params))
+            cred
             msg
             (PaginatedList.decoder decoder)

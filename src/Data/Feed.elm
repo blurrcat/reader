@@ -1,6 +1,5 @@
 module Data.Feed exposing (Feed, FeedId, Paginated, decoder, feedIdDecoder, idFromInt, idToString, list)
 
-import String
 import Api
 import Api.Endpoint as Endpoint
 import Url.Builder exposing (QueryParameter)
@@ -65,9 +64,10 @@ type alias Paginated =
     PaginatedList Feed
 
 
-list : List QueryParameter -> Api.ResultMsg Paginated msg -> Cmd msg
-list params msg =
+list : List QueryParameter -> Maybe Api.Cred -> Api.HttpResultMsg Paginated msg -> Cmd msg
+list params cred msg =
     Api.get
         (Endpoint.feeds params)
+        cred
         msg
         (PaginatedList.decoder decoder)
