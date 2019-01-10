@@ -1,11 +1,15 @@
 module Main exposing (main)
 
+import Api
 import Browser exposing (Document)
 import Browser.Navigation as Nav
 import Url exposing (Url)
 import Html
 import Pages.Home as Home
+import Pages.Login as Login
 import Route
+import Session exposing (Session, navKey)
+import Json.Encode as Encode
 
 
 main =
@@ -23,100 +27,78 @@ main =
 -- MODEL
 
 
-type alias Flag =
-    {}
+type alias Flags =
+    Encode.Value
 
 
 type Msg
     = Noop
     | GotHomeMsg Home.Msg
+    | GotLoginMsg Login.Msg
     | UrlClicked Browser.UrlRequest
     | UrlChanged Url
 
 
-type PageModel
-    = NotFound
+type Model
+    = NotFound Session
     | Home Home.Model
+    | Login Login.Model
 
 
-type alias Model =
-    { pageModel : PageModel
-    , navKey : Nav.Key
-    }
-
-
-updateWith : (subModel -> PageModel) -> (subMsg -> Msg) -> Model -> ( subModel, Cmd subMsg ) -> ( Model, Cmd Msg )
-updateWith toPageModel toMsg model ( subModel, subCmd ) =
-    ( { model
-        | pageModel = toPageModel subModel
-      }
-    , Cmd.map toMsg subCmd
-    )
-
-
-changeRouteTo : Maybe Route.Route -> Model -> ( Model, Cmd Msg )
-changeRouteTo maybeRoute model =
-    case maybeRoute of
-        Nothing ->
-            ( model, Cmd.none )
-
-        Just route ->
-            case route of
-                Route.Home ->
-                    Home.init
-                        |> updateWith Home GotHomeMsg model
-
-
-init : Flag -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
-init _ url key =
-    changeRouteTo
-        (Route.fromUrl url)
-        { pageModel = NotFound
-        , navKey = key
-        }
+init : Flags -> Url.Url -> Nav.Key -> ( Model, Cmd Msg )
+init flags url key =
+    let
+        session =
+            Session.new (Api.decodeCred flags) key
+    in
+        changeRouteTo
+            (Route.fromUrl url)
+            (NotFound session)
 
 
 
 -- UPDATE
 
 
-handleUrlRequest : Nav.Key -> Browser.UrlRequest -> Cmd a
-handleUrlRequest navKey urlRequest =
-    case urlRequest of
-        Browser.Internal url ->
-            Nav.pushUrl navKey (Url.toString url)
-
-        Browser.External href ->
-            Nav.load href
-
-
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
-    case ( msg, model.pageModel ) of
-        -- routing
-        ( UrlChanged url, _ ) ->
-            changeRouteTo (Route.fromUrl url) model
+    let
+        session =
+            toSession model
+    in
+        case ( msg, model ) of
+            -- routing
+            ( UrlChanged url, _ ) ->
+                changeRouteTo (Route.fromUrl url) model
 
-        ( UrlClicked urlRequest, _ ) ->
-            ( model
-            , handleUrlRequest model.navKey urlRequest
-            )
+            ( UrlClicked urlRequest, _ ) ->
+                ( model
+                , handleUrlRequest (navKey session) urlRequest
+                )
 
-        ( GotHomeMsg subMsg, Home subModel ) ->
-            Home.update subMsg subModel
-                |> updateWith Home GotHomeMsg model
+            ( GotHomeMsg subMsg, Home subModel ) ->
+                Home.update subMsg subModel
+                    |> updateWith Home GotHomeMsg model
 
-        ( _, _ ) ->
-            ( model, Cmd.none )
+            ( GotLoginMsg subMsg, Login subModel ) ->
+                Login.update subMsg subModel
+                    |> updateWith Login GotLoginMsg model
+
+            ( someMsg, someModel ) ->
+                -- disgard message that arrive on the wrong page
+                ( model, Cmd.none )
 
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    case model.pageModel of
+    case model of
         Home subModel ->
             Sub.map GotHomeMsg (Home.subscriptions subModel)
 
-        NotFound ->
+        Login subModel ->
+            Sub.map GotLoginMsg (Login.subscriptions subModel)
+
+        NotFound _ ->
             Sub.none
 
 
@@ -137,11 +119,68 @@ viewPage pageView toMsg subModel =
 
 view : Model -> Document Msg
 view model =
-    case model.pageModel of
+    case model of
         Home subModel ->
             viewPage Home.view GotHomeMsg subModel
 
-        NotFound ->
+        Login subModel ->
+            viewPage Login.view GotLoginMsg subModel
+
+        NotFound _ ->
             { title = "404"
             , body = [ Html.text "404 NOT FOUND" ]
             }
+
+
+
+-- INTERNAL
+
+
+toSession model =
+    case model of
+        NotFound session ->
+            session
+
+        Home subModel ->
+            subModel.session
+
+        Login subModel ->
+            subModel.session
+
+
+updateWith : (subModel -> Model) -> (subMsg -> Msg) -> Model -> ( subModel, Cmd subMsg ) -> ( Model, Cmd Msg )
+updateWith toModel toMsg model ( subModel, subCmd ) =
+    ( toModel subModel
+    , Cmd.map toMsg subCmd
+    )
+
+
+changeRouteTo : Maybe Route.Route -> Model -> ( Model, Cmd Msg )
+changeRouteTo maybeRoute model =
+    let
+        session =
+            toSession model
+    in
+        case maybeRoute of
+            Nothing ->
+                ( model, Cmd.none )
+
+            Just route ->
+                case route of
+                    Route.Home ->
+                        Home.init session
+                            |> updateWith Home GotHomeMsg model
+
+                    Route.Login ->
+                        Login.init session
+                            |> updateWith Login GotLoginMsg model
+
+
+handleUrlRequest : Nav.Key -> Browser.UrlRequest -> Cmd a
+handleUrlRequest navKey urlRequest =
+    case urlRequest of
+        Browser.Internal url ->
+            Nav.pushUrl navKey (Url.toString url)
+
+        Browser.External href ->
+            Nav.load href

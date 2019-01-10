@@ -26,7 +26,8 @@ import Icons
 import Json.Decode as Decode
 import Markdown
 import RemoteData exposing (WebData)
-import String
+import Route
+import Session exposing (Session)
 import Task
 
 
@@ -36,27 +37,41 @@ type alias Model =
     , selectedFeedId : Maybe Feed.FeedId
     , selectedFeedItemId : Maybe FeedItem.FeedItemId
     , menuActive : Bool
+    , session : Session
     }
 
 
-init : ( Model, Cmd Msg )
-init =
-    ( { feeds = RemoteData.Loading
-      , feedItems = RemoteData.Loading
-      , selectedFeedId = Nothing
-      , selectedFeedItemId = Nothing
-      , menuActive = False
-      }
-    , Cmd.batch
-        [ Feed.list
-            (PaginatedList.params { page = 1, perPage = 20 })
-            FeedsResponse
-        , FeedItem.list
-            (PaginatedList.params { page = 1, perPage = 20 })
-            Nothing
-            FeedItemsResponse
-        ]
-    )
+init : Session -> ( Model, Cmd Msg )
+init session =
+    let
+        cmd =
+            case Session.cred session of
+                Just _ ->
+                    Cmd.batch
+                        [ Feed.list
+                            (PaginatedList.params { page = 1, perPage = 20 })
+                            (Session.cred session)
+                            FeedsResponse
+                        , FeedItem.list
+                            (PaginatedList.params { page = 1, perPage = 20 })
+                            Nothing
+                            (Session.cred session)
+                            FeedItemsResponse
+                        ]
+
+                Nothing ->
+                    -- if user is not logged in, redirect to login page
+                    Route.replaceUrl (Session.navKey session) Route.Login
+    in
+        ( { feeds = RemoteData.Loading
+          , feedItems = RemoteData.Loading
+          , selectedFeedId = Nothing
+          , selectedFeedItemId = Nothing
+          , menuActive = False
+          , session = session
+          }
+        , cmd
+        )
 
 
 type Msg
@@ -67,6 +82,8 @@ type Msg
     | SelectFeed (Maybe Feed.FeedId)
     | SelectFeedItem FeedItem.FeedItemId
     | ToggleMenuActive
+    | GotSession Session
+    | Logout
 
 
 update : Msg -> Model -> ( Model, Cmd Msg )
@@ -107,6 +124,7 @@ update msg model =
                 , FeedItem.list
                     (PaginatedList.params { page = page, perPage = 20 })
                     feedId
+                    (Session.cred model.session)
                     FeedItemsResponse
                 )
 
@@ -119,6 +137,7 @@ update msg model =
             , FeedItem.list
                 (PaginatedList.params { page = 1, perPage = 20 })
                 maybeFeedId
+                (Session.cred model.session)
                 FeedItemsResponse
             )
 
@@ -142,10 +161,25 @@ update msg model =
                 , cmd
                 )
 
+        GotSession session ->
+            let
+                cmd =
+                    case Session.cred session of
+                        Just _ ->
+                            Cmd.none
+
+                        Nothing ->
+                            Route.replaceUrl (Session.navKey session) Route.Login
+            in
+                ( { model | session = session }, cmd )
+
+        Logout ->
+            ( model, Api.logout )
+
 
 subscriptions : Model -> Sub Msg
 subscriptions model =
-    Sub.none
+    Session.changes GotSession (Session.navKey model.session)
 
 
 jumpTo : FeedItem.FeedItemId -> Cmd Msg
@@ -156,26 +190,30 @@ jumpTo itemId =
         |> Task.attempt (\_ -> Noop)
 
 
-feedView : Maybe Feed.FeedId -> Maybe Feed.FeedId -> String -> Html Msg
-feedView selectedFeedId feedId feedTitle =
+menuLinkView msg isSelected linkText =
     li
         [ class "pure-menu-item"
         , classList
             [ ( "pure-menu-selected"
-              , selectedFeedId == feedId
+              , isSelected
               )
             ]
-        , onClick (SelectFeed feedId)
+        , onClick msg
         ]
         [ span
-            [ title feedTitle
+            [ title linkText
             , class "pure-menu-link"
             , style "cursor" "pointer"
             , style "overflow" "hidden"
             , style "text-overflow" "ellipsis"
             ]
-            [ text feedTitle ]
+            [ text linkText ]
         ]
+
+
+feedView : Maybe Feed.FeedId -> Maybe Feed.FeedId -> String -> Html Msg
+feedView selectedFeedId feedId feedTitle =
+    menuLinkView (SelectFeed feedId) (selectedFeedId == feedId) feedTitle
 
 
 feedsView : Maybe Feed.FeedId -> WebData Feed.Paginated -> Html Msg
@@ -194,6 +232,9 @@ feedsView selectedFeedId feeds =
 
                 RemoteData.Success resp ->
                     let
+                        logoutLink =
+                            menuLinkView Logout False "Logout"
+
                         latestLink =
                             feedView Nothing Nothing "Latest"
 
@@ -201,7 +242,8 @@ feedsView selectedFeedId feeds =
                             resp.results
                                 |> List.map (\f -> feedView selectedFeedId (Just f.id) f.title)
                     in
-                        ul [ class "pure-menu-list" ] (latestLink :: feedLinks)
+                        ul [ class "pure-menu-list" ]
+                            (logoutLink :: latestLink :: feedLinks)
     in
         div
             [ class "pure-menu" ]
@@ -405,7 +447,7 @@ htmlView model =
     in
         div
             -- layout
-            [ id "home"
+            [ id "home-page"
             ]
             [ span
                 -- menu button
