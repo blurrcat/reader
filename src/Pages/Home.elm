@@ -86,6 +86,16 @@ type Msg
     | Logout
 
 
+redirectOnUnauthorized : Session -> Result Http.Error a -> Cmd Msg
+redirectOnUnauthorized session result =
+    case result of
+        Err (Http.BadStatus 401) ->
+            Route.replaceUrl (Session.navKey session) Route.Login
+
+        _ ->
+            Cmd.none
+
+
 update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
@@ -101,12 +111,12 @@ update msg model =
 
         FeedsResponse resp ->
             ( { model | feeds = RemoteData.fromResult resp }
-            , Cmd.none
+            , redirectOnUnauthorized model.session resp
             )
 
         FeedItemsResponse resp ->
             ( { model | feedItems = RemoteData.fromResult resp }
-            , Cmd.none
+            , redirectOnUnauthorized model.session resp
             )
 
         LoadMoreItems maybePage ->
